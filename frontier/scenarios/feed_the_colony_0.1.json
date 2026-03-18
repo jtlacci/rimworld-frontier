@@ -1,0 +1,35 @@
+{
+  "name": "feed_the_colony",
+  "map_size": 50,
+  "terrain": "Soil",
+  "mountains": "none",
+  "water": "none",
+  "trees": true,
+  "tree_density": 0.1,
+  "temperature": 20,
+  "keep_ruins": false,
+  "seed": 42,
+  "berry_bushes": 15,
+  "keep_wildlife": false,
+  "starting_packs": 0,
+  "wildlife_count": 20,
+  "starting_items": {
+    "ComponentSpacer": 0,
+    "Luciferium": 0
+  },
+  "completed_research": null,
+  "wildlife_species": [
+    "Turkey",
+    "Deer",
+    "Hare",
+    "Raccoon"
+  ],
+  "ruins": null,
+  "ponds": null,
+  "mountain_side": null,
+  "mountain_resources": null,
+  "grass": true,
+  "grass_density": 0.5,
+  "mission": "feed_the_colony",
+  "mission_description": "Establish a cooking pipeline and keep everyone fed for 3 days. Zero survival packs \u2014 you must produce all food from hunting, gathering, and cooking."
+}

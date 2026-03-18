@@ -1,0 +1,28 @@
+{
+  "name": "baseline",
+  "map_size": 50,
+  "terrain": "Soil",
+  "mountains": "none",
+  "water": "none",
+  "trees": true,
+  "tree_density": 0.08,
+  "temperature": 20,
+  "keep_ruins": false,
+  "seed": 42,
+  "berry_bushes": 12,
+  "keep_wildlife": false,
+  "starting_packs": 6,
+  "wildlife_count": 15,
+  "wildlife_species": ["Turkey", "Deer", "Hare", "Raccoon"],
+  "starting_items": {"ComponentSpacer": 0, "Luciferium": 0},
+  "completed_research": ["Fishing"],
+  "mountain_side": "left",
+  "mountain_resources": [
+    {"x": 2, "z": 15, "width": 4, "height": 4, "type": "MineableSteel"},
+    {"x": 2, "z": 25, "width": 3, "height": 3, "type": "MineableComponentsIndustrial"}
+  ],
+  "ponds": [{"x": 40, "z": 42, "radius": 5}],
+  "ruins": [{"x": 15, "z": 2, "width": 10, "height": 10, "stuff": "BlocksGranite"}],
+  "grass": true,
+  "grass_density": 0.6
+}

@@ -1,0 +1,72 @@
+{
+  "name": "feed_the_colony_0.4",
+  "map_size": 50,
+  "terrain": "Soil",
+  "mountains": "none",
+  "water": "none",
+  "trees": true,
+  "tree_density": 0.08,
+  "temperature": 15,
+  "keep_ruins": false,
+  "seed": 42,
+  "berry_bushes": 15,
+  "keep_wildlife": false,
+  "starting_packs": 0,
+  "wildlife_count": 4,
+  "starting_items": {
+    "ComponentSpacer": 0,
+    "Luciferium": 0
+  },
+  "completed_research": null,
+  "wildlife_species": [
+    "Hare"
+  ],
+  "wildlife_distribution": {
+    "Hare": 4
+  },
+  "scheduled_spawns": null,
+  "ruins": null,
+  "ponds": null,
+  "mountain_side": null,
+  "mountain_resources": null,
+  "grass": true,
+  "grass_density": 0.5,
+  "mission": "feed_the_colony",
+  "mission_description": "Feed 3 colonists for 3 days with zero survival packs. Only 4 Hares on the map (124 raw meat = ~12 meals = 10.8 nutrition), but 3 colonists need 14.4 nutrition over 3 days. Meat ALONE is not enough. 15 berry bushes are pre-grown and harvestable \u2014 but only if plant-cutting is prioritized on day 1. The dilemma: the overseer's instinct is to bulk-hunt everything then cook. That works for day 1. It fails on days 2-3 when the pantry empties and the berry bushes were never touched.",
+  "scoring": {
+    "meals_produced": {
+      "weight": 30,
+      "metric": "peak_meals",
+      "thresholds": [
+        1,
+        5,
+        10,
+        15
+      ]
+    },
+    "food_sustained": {
+      "weight": 30,
+      "metric": "pct_fed",
+      "need": "food",
+      "threshold": 0.25
+    },
+    "no_starvation": {
+      "weight": 20,
+      "metric": "no_alert",
+      "alert": "starvation"
+    },
+    "food_stockpile": {
+      "weight": 10,
+      "metric": "final_meals",
+      "thresholds": [
+        1,
+        5,
+        10
+      ]
+    },
+    "all_alive": {
+      "weight": 10,
+      "metric": "all_alive"
+    }
+  }
+}

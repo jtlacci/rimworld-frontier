@@ -1,0 +1,23 @@
+{
+  "name": "build_a_home",
+  "map_size": 50,
+  "terrain": "SoilRich",
+  "mountains": "none",
+  "water": "none",
+  "trees": true,
+  "tree_density": 0.12,
+  "temperature": 22,
+  "keep_ruins": false,
+  "seed": 42,
+  "berry_bushes": 15,
+  "keep_wildlife": false,
+  "wildlife_count": 10,
+  "wildlife_species": ["Turkey", "Hare"],
+  "starting_packs": 12,
+  "starting_items": {"Steel": 1500, "WoodLog": 500, "ComponentSpacer": 0, "Luciferium": 0},
+  "completed_research": ["ComplexFurniture", "Stonecutting"],
+  "grass": true,
+  "grass_density": 0.6,
+  "mission": "build_a_home",
+  "mission_description": "Build the most impressive colony you can. Survival is easy — focus on room quality. Every room needs flooring, lighting, furniture, and sculptures."
+}

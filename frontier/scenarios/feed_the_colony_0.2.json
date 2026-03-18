@@ -1,0 +1,32 @@
+{
+  "name": "feed_the_colony_0.2",
+  "map_size": 50,
+  "terrain": "Soil",
+  "mountains": "none",
+  "water": "none",
+  "trees": true,
+  "tree_density": 0.08,
+  "temperature": 10,
+  "keep_ruins": false,
+  "seed": 77,
+  "berry_bushes": 4,
+  "keep_wildlife": false,
+  "starting_packs": 0,
+  "wildlife_count": 10,
+  "starting_items": {},
+  "completed_research": null,
+  "wildlife_species": [
+    "Turkey",
+    "Deer",
+    "Boar",
+    "Hare"
+  ],
+  "ruins": null,
+  "ponds": null,
+  "mountain_side": null,
+  "mountain_resources": null,
+  "grass": true,
+  "grass_density": 0.4,
+  "mission": "feed_the_colony",
+  "mission_description": "Establish a cooking pipeline and keep everyone fed for 3 days. Zero survival packs \u2014 every calorie must come from hunting, gathering, and cooking. Fewer animals, scarce berries, cool temperatures. WARNING: Boar fight back when hunted \u2014 an injured colonist means a stalled pipeline."
+}

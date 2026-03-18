@@ -1,0 +1,6 @@
+*.pyc
+__pycache__/
+frontier/results/
+frontier/logs/*.jsonl
+frontier/logs/*.log
+frontier/logs/.last_check
