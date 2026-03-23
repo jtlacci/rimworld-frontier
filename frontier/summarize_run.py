@@ -10,6 +10,7 @@ Usage: python3 frontier/summarize_run.py <result_dir>
 import json
 import os
 import sys
+from collections import Counter
 
 
 def load_json(path):
@@ -18,6 +19,129 @@ def load_json(path):
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
+
+def load_jsonl(path):
+    entries = []
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        entries.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+    except FileNotFoundError:
+        pass
+    return entries
+
+
+def format_phase_durations(result_dir):
+    """Read phases.jsonl, compute wall-clock time per phase."""
+    events = load_jsonl(os.path.join(result_dir, "phases.jsonl"))
+    if not events:
+        return None
+    starts = {}
+    durations = []
+    for ev in events:
+        phase = ev.get("phase", "")
+        if ev.get("event") == "start":
+            starts[phase] = ev.get("ts", 0)
+        elif ev.get("event") == "end" and phase in starts:
+            dur = ev.get("ts", 0) - starts[phase]
+            durations.append((phase, dur))
+    if not durations:
+        return None
+    lines = ["## Phase Durations\n"]
+    total = sum(d for _, d in durations)
+    for phase, dur in durations:
+        pct = (dur / total * 100) if total > 0 else 0
+        lines.append(f"- **{phase}**: {dur}s ({pct:.0f}%)")
+    lines.append(f"- **total**: {total}s")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def format_timeline_trends(result_dir):
+    """Read score_timeline.jsonl, extract key trajectories."""
+    entries = load_jsonl(os.path.join(result_dir, "score_timeline.jsonl"))
+    if len(entries) < 2:
+        return None
+    lines = ["## Timeline Trends\n"]
+
+    # Food trajectory
+    meals = [e.get("meals", 0) for e in entries]
+    lines.append(f"- **Food (meals)**: {meals[0]} → {meals[-1]} "
+                 f"(peak {max(meals)}, low {min(meals)})")
+
+    # Building count
+    bldgs = [e.get("buildings", 0) for e in entries]
+    lines.append(f"- **Buildings**: {bldgs[0]} → {bldgs[-1]}")
+
+    # Mood arc
+    moods = [e.get("mood_avg", -1) for e in entries]
+    valid_moods = [m for m in moods if m >= 0]
+    if valid_moods:
+        lines.append(f"- **Avg mood**: {valid_moods[0]:.0f}% → {valid_moods[-1]:.0f}% "
+                     f"(low {min(valid_moods):.0f}%)")
+
+    # Score progression
+    scores = [e.get("pct", 0) for e in entries]
+    lines.append(f"- **Score**: {scores[0]:.1f}% → {scores[-1]:.1f}%")
+
+    # Warnings (searchable by QMD)
+    if len(meals) >= 4:
+        mid = len(meals) // 2
+        if meals[mid] > meals[-1] and meals[mid] - meals[-1] > 3:
+            lines.append(f"- **WARNING: food dropped mid-game** "
+                         f"({meals[mid]} at midpoint → {meals[-1]} final)")
+
+    if valid_moods and min(valid_moods) < 25:
+        lines.append(f"- **WARNING: mood crisis** (dropped to {min(valid_moods):.0f}%)")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def format_sdk_stats(result_dir):
+    """Read command_log.jsonl, compute call stats."""
+    entries = load_jsonl(os.path.join(result_dir, "command_log.jsonl"))
+    if not entries:
+        return None
+
+    total = len(entries)
+    errors = sum(1 for e in entries if not e.get("ok", True))
+    cached = sum(1 for e in entries if e.get("cached", False))
+    error_rate = errors / total * 100 if total > 0 else 0
+
+    cmd_counts = Counter(e.get("cmd", "?") for e in entries)
+    top_cmds = cmd_counts.most_common(5)
+
+    non_cached = [e for e in entries if not e.get("cached") and e.get("ms", 0) > 0]
+    slowest = sorted(non_cached, key=lambda e: -e.get("ms", 0))[:3]
+
+    lines = ["## SDK Call Stats\n"]
+    lines.append(f"- **Total calls**: {total} ({cached} cached)")
+    lines.append(f"- **Errors**: {errors} ({error_rate:.1f}%)")
+    lines.append(f"- **Top commands**: "
+                 + ", ".join(f"{cmd} ({n})" for cmd, n in top_cmds))
+    if slowest:
+        lines.append(f"- **Slowest**: "
+                     + ", ".join(f"{e.get('cmd')} ({e.get('ms', 0):.0f}ms)"
+                                for e in slowest))
+
+    if error_rate > 10:
+        lines.append(f"- **WARNING: high SDK error rate** ({error_rate:.1f}%)")
+
+    error_cmds = Counter(e.get("cmd", "?") for e in entries if not e.get("ok", True))
+    if error_cmds:
+        top_errors = error_cmds.most_common(3)
+        lines.append(f"- **Error commands**: "
+                     + ", ".join(f"{cmd} ({n})" for cmd, n in top_errors))
+
+    lines.append("")
+    return "\n".join(lines)
 
 
 def summarize(result_dir):
@@ -62,6 +186,21 @@ def summarize(result_dir):
                 for m in sorted(zeros):
                     lines.append(f"- {m}")
                 lines.append("")
+
+    # --- Phase Durations ---
+    phase_text = format_phase_durations(result_dir)
+    if phase_text:
+        lines.append(phase_text)
+
+    # --- Timeline Trends ---
+    timeline_text = format_timeline_trends(result_dir)
+    if timeline_text:
+        lines.append(timeline_text)
+
+    # --- SDK Call Stats ---
+    sdk_text = format_sdk_stats(result_dir)
+    if sdk_text:
+        lines.append(sdk_text)
 
     # --- Scenario Config ---
     if scenario:
@@ -120,9 +259,24 @@ def summarize(result_dir):
                     lines.append(f"- {rec}")
             lines.append("")
 
-    # --- Trainer Summary (if available) ---
+    # --- Trainer Fixes ---
+    trainer_changelog = load_json(os.path.join(result_dir, "trainer_changelog.json"))
     trainer_path = os.path.join(result_dir, "trainer_summary.txt")
-    if os.path.exists(trainer_path):
+
+    if trainer_changelog:
+        lines.append("## Trainer Fixes\n")
+        issue = trainer_changelog.get("issue_addressed", "")
+        if issue:
+            lines.append(f"**Issue addressed**: {issue}\n")
+        changes = trainer_changelog.get("changes", [])
+        for ch in changes:
+            lines.append(f"- `{ch.get('file', '?')}`: {ch.get('description', '?')}")
+        if changes:
+            lines.append("")
+        validation = trainer_changelog.get("validation", "")
+        if validation:
+            lines.append(f"**Validation**: {validation}\n")
+    elif os.path.exists(trainer_path):
         with open(trainer_path) as f:
             trainer_text = f.read().strip()
         if trainer_text:

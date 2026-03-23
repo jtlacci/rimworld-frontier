@@ -126,7 +126,8 @@ frontier/
   generator.py                 # Scenario generator
   calibration.py               # Calibration scenarios
   scenarios/                   # Scenario configs (JSON)
-  results/<scenario>/run_NNN/  # Per-run artifacts + charts
+  summarize_run.py             # Generate run_summary.md for QMD indexing
+  results/<scenario>/run_NNN/  # Per-run artifacts (see Run Artifacts below)
   frontier_state.json          # Scenario classification state
 
 AGENT_AUDITOR.md               # Auditor prompt — failure investigation
@@ -185,21 +186,37 @@ cd $AGENT_REPO && git diff HEAD~1
 cd $AGENT_REPO && git revert HEAD
 ```
 
+## Run Artifacts
+
+Each run at `results/<scenario>/run_NNN/` produces:
+
+| File | Source | Description |
+|------|--------|-------------|
+| `score.json` | scoring | Final score breakdown |
+| `score_timeline.jsonl` | score_monitor | 20s telemetry snapshots |
+| `command_log.jsonl` | SDK (RimClient) | Every SDK command with args, timing, success/error |
+| `phases.jsonl` | runner.sh | Phase start/end timestamps |
+| `overseer_conversation.txt` | runner.sh | Full overseer output |
+| `before.json` / `after.json` | runner.sh | Colony state snapshots |
+| `audit.json` | run_auditor.sh | Failure chains, execution gaps, recommendations |
+| `trainer_changelog.json` | run_trainer.sh | Structured list of code changes and issue addressed |
+| `run_summary.md` | summarize_run.py | QMD-indexed summary of all above |
+| `charts/*.png` | timeline_charts.py | 10 observability charts |
+
 ## Run History Search (QMD)
 
-Run results are indexed by QMD for semantic search across runs. Each run generates a `run_summary.md` with score breakdown, failure chains, auditor findings, and trainer fixes.
+`run_summary.md` is auto-generated after each run (and regenerated after audits/trainer fixes) with: score breakdown, phase durations, timeline trends (food/buildings/mood arcs), SDK call stats (error rates, top commands), audit findings, and trainer changes. Indexed by QMD for semantic search.
 
 ```bash
 # Search across all runs
 qmd query "cooking bill failures" -c frontier-runs
-qmd query "self sufficiency zero score" -c frontier-runs
-qmd query "recurring shelter issues" -c frontier-runs
+qmd query "runs where food dropped mid-game" -c frontier-runs
+qmd query "high SDK error rate" -c frontier-runs
+qmd query "what fixes were tried for shelter" -c frontier-runs
 
 # Re-index after manual changes
 qmd update && qmd embed
 ```
-
-Summaries are auto-generated at the end of runner.sh, run_auditor.sh, and run_trainer.sh.
 
 ## Key Gotchas
 

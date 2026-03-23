@@ -46,6 +46,10 @@ log() {
     echo "[runner] $*" >> "$LIVE_LOG" 2>/dev/null
 }
 
+phase_mark() {
+    echo "{\"phase\":\"$1\",\"event\":\"$2\",\"ts\":$(date +%s)}" >> "$RESULT_DIR/phases.jsonl"
+}
+
 ensure_game_running() {
     if ! pgrep -f "RimWorld" >/dev/null 2>&1; then
         log "RimWorld not running — launching..."
@@ -78,6 +82,7 @@ log "========== FRONTIER: $SCENARIO_NAME (run $RUN_ID) =========="
 
 # ─── Phase 0: Generate save file ───
 log "Generating save for scenario: $SCENARIO_NAME..."
+phase_mark "savegen" "start"
 AGENT_REPO="$AGENT_REPO" python3 << PYEOF
 import sys, json, os
 sys.path.insert(0, '$FRONTIER_DIR')
@@ -87,8 +92,10 @@ config = ScenarioConfig.from_json(open('$SCENARIO_JSON').read())
 output = config.generate_save()
 print(f"Save generated: {output}")
 PYEOF
+phase_mark "savegen" "end"
 
 # ─── Phase 1: Load save ───
+phase_mark "load_save" "start"
 ensure_game_running || exit 1
 
 log "Loading save: $SAVE_NAME..."
@@ -123,8 +130,10 @@ if [[ $LOAD_OK -ne 1 ]]; then
 fi
 
 log "Save loaded, incidents disabled, items unforbidden"
+phase_mark "load_save" "end"
 
 # ─── Phase 2: Before snapshot ───
+phase_mark "before_snapshot" "start"
 python3 << PYEOF - "$RESULT_DIR" "$MAP_SIZE"
 import sys, json, time; sys.path.insert(0, '$AGENT_REPO/sdk')
 from rimworld import RimClient
@@ -159,6 +168,7 @@ with open(f"{result_dir}/before.json", "w") as f:
 r.close()
 print("Before snapshot saved")
 PYEOF
+phase_mark "before_snapshot" "end"
 
 # Clear stale token log (in agent repo)
 rm -f "$AGENT_REPO/surveys/token_log.jsonl"
@@ -166,6 +176,7 @@ rm -f "$AGENT_REPO/surveys/token_log.jsonl"
 START_TS=$(date +%s)
 
 # ─── Phase 2b: Telemetry smoke test + start score monitor ───
+phase_mark "smoke_test" "start"
 log "Running telemetry smoke test..."
 python3 << 'PYEOF'
 import sys, os; sys.path.insert(0, os.path.join(os.environ.get("AGENT_REPO", ""), "sdk"))
@@ -202,6 +213,7 @@ log "Starting score monitor (20s intervals)..."
 > "$RESULT_DIR/score_timeline.jsonl"
 AGENT_REPO="$AGENT_REPO" python3 "$FRONTIER_DIR/agents/score_monitor.py" "$RESULT_DIR" 20 &
 MONITOR_PID=$!
+phase_mark "smoke_test" "end"
 
 # ─── Phase 3: Load mission instructions if available ───
 MISSION_PROMPT=""
@@ -223,6 +235,7 @@ else
     done
 fi
 
+phase_mark "overseer" "start"
 log "Spawning overseer (${OVERSEER_TIMEOUT}s limit, map=${MAP_SIZE}x${MAP_SIZE})..."
 
 SYSTEM_PROMPT="# RimWorld Frontier Overseer — ${MAP_SIZE}x${MAP_SIZE} Map
@@ -309,6 +322,8 @@ ${MISSION_PROMPT:+## MISSION INSTRUCTIONS
 
 $MISSION_PROMPT}"
 
+export RIM_SDK_LOG="$RESULT_DIR/command_log.jsonl"
+
 unset CLAUDECODE
 TMPFILE=$(mktemp)
 OVERSEER_EXIT=0
@@ -369,6 +384,7 @@ END_TS=$(date +%s)
 DURATION=$((END_TS - START_TS))
 
 log "Overseer finished in ${DURATION}s (exit=$OVERSEER_EXIT)"
+phase_mark "overseer" "end"
 
 # ─── Phase 3b: Stop score monitor ───
 log "Stopping score monitor..."
@@ -463,6 +479,7 @@ except Exception as e:
 PYEOF
 
 # ─── Phase 4: After snapshot + scoring ───
+phase_mark "scoring" "start"
 log "Taking after snapshot and scoring..."
 
 python3 << PYEOF - "$RESULT_DIR" "$DURATION" "$SCENARIO_JSON"
@@ -529,8 +546,10 @@ with open(f"{result_dir}/diff.txt", "w") as f:
 
 r.close()
 PYEOF
+phase_mark "scoring" "end"
 
 # ─── Phase 4b: Timeline analysis ───
+phase_mark "timeline_analysis" "start"
 log "Analyzing run timeline..."
 python3 << PYEOF - "$RESULT_DIR"
 import sys, json, os
@@ -817,12 +836,16 @@ else:
         with open(os.path.join(result_dir, "timeline_analysis.json"), "w") as f:
             json.dump(analysis, f, indent=2)
 PYEOF
+phase_mark "timeline_analysis" "end"
 
 # ─── Phase 4c: Generate timeline charts ───
+phase_mark "charts" "start"
 log "Generating timeline charts..."
 python3 "$FRONTIER_DIR/frontier/timeline_charts.py" "$RESULT_DIR" 2>/dev/null || log "Charts skipped (matplotlib not available)"
+phase_mark "charts" "end"
 
 # ─── Phase 5: Update frontier tracker ───
+phase_mark "frontier_tracking" "start"
 log "Updating frontier tracker..."
 
 python3 << PYEOF - "$RESULT_DIR" "$RUN_ID" "$SCENARIO_JSON"
@@ -889,8 +912,10 @@ if failures:
     print()
     print(summarize_failures(failures))
 PYEOF
+phase_mark "frontier_tracking" "end"
 
 # ─── Phase 6: Colony map ───
+phase_mark "colony_map" "start"
 log "Capturing colony map..."
 python3 << PYEOF - "$RESULT_DIR" "$MAP_SIZE"
 import sys, json; sys.path.insert(0, '$AGENT_REPO/sdk')
@@ -957,6 +982,7 @@ with open(f"{result_dir}/colony_map.txt", "w") as f:
 r.close()
 print(f"Colony map saved (center={cx},{cz})")
 PYEOF
+phase_mark "colony_map" "end"
 
 log "========== FRONTIER: $SCENARIO_NAME (run $RUN_ID) COMPLETE =========="
 log "Results: $RESULT_DIR/"

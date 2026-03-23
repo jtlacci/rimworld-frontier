@@ -203,6 +203,55 @@ if usage_data:
     print(f"\nTokens: {input_tok + output_tok} (in={input_tok}, out={output_tok})")
 PYEOF
 
+# Extract structured changelog JSON from trainer output
+python3 << 'CLEOF' - "$SUMMARY_PATH" "$RUN_DIR/trainer_changelog.json"
+import json, re, sys
+
+summary_path = sys.argv[1]
+changelog_path = sys.argv[2]
+
+with open(summary_path) as f:
+    text = f.read()
+
+changelog = None
+
+# Try to extract the structured JSON block
+start_marker = "=== TRAINER CHANGELOG JSON ==="
+end_marker = "=== END TRAINER CHANGELOG JSON ==="
+if start_marker in text and end_marker in text:
+    start = text.index(start_marker) + len(start_marker)
+    end = text.index(end_marker)
+    raw = text[start:end].strip()
+    try:
+        changelog = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"WARNING: TRAINER CHANGELOG JSON block found but invalid JSON: {e}", file=sys.stderr)
+
+# Fallback: parse [file] description lines from text summary
+if changelog is None:
+    print("NOTE: No valid TRAINER CHANGELOG JSON block found, falling back to text parsing", file=sys.stderr)
+    changes = []
+    summary_start = "=== TRAINER SUMMARY ==="
+    summary_end = "=== END TRAINER SUMMARY ==="
+    if summary_start in text:
+        s = text.index(summary_start)
+        e = text.index(summary_end) if summary_end in text else len(text)
+        summary_block = text[s:e]
+        for m in re.finditer(r'^\[([^\]]+)\]\s+(.+)$', summary_block, re.MULTILINE):
+            changes.append({"file": m.group(1).strip(), "description": m.group(2).strip()})
+    changelog = {
+        "audit_source": "unknown",
+        "changes": changes,
+        "issue_addressed": "parsed from text summary (no JSON block)",
+        "validation": "unknown",
+        "_fallback": True
+    }
+
+with open(changelog_path, "w") as f:
+    json.dump(changelog, f, indent=2)
+print(f"Changelog written to {changelog_path}")
+CLEOF
+
 # Cleanup
 rm -f "$TMPFILE" "${TMPFILE}.err"
 

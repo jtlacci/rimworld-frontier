@@ -80,6 +80,10 @@ If validation fails, fix the syntax error before finishing.
 
 ## Output
 
+You MUST produce BOTH blocks below — the text summary AND the structured JSON changelog. Both are REQUIRED.
+
+### Text Summary (human-readable)
+
 ```
 === TRAINER SUMMARY ===
 CHANGES: N files modified
@@ -90,3 +94,20 @@ CHANGES: N files modified
 VALIDATION: all files syntax OK
 === END TRAINER SUMMARY ===
 ```
+
+### Structured Changelog (machine-readable)
+
+Immediately after the text summary, emit a JSON changelog block. The JSON must be valid **single-line JSON** (no newlines within the JSON object).
+
+```
+=== TRAINER CHANGELOG JSON ===
+{"audit_source": "<path to audit.json that prompted this fix>", "changes": [{"file": "sdk/rimworld.py", "description": "what changed and why"}], "issue_addressed": "one-line summary of the core issue fixed", "validation": "all files syntax OK"}
+=== END TRAINER CHANGELOG JSON ===
+```
+
+- `audit_source`: the full path to the audit.json you were given
+- `changes`: array of `{"file": "<path>", "description": "<what changed and why>"}` for each modified file
+- `issue_addressed`: one-line summary of the core issue you fixed
+- `validation`: result of syntax checks (e.g. "all files syntax OK")
+
+Both blocks are REQUIRED. The JSON must be valid single-line JSON parseable by `json.loads()`.
