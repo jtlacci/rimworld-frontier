@@ -185,6 +185,22 @@ cd $AGENT_REPO && git diff HEAD~1
 cd $AGENT_REPO && git revert HEAD
 ```
 
+## Run History Search (QMD)
+
+Run results are indexed by QMD for semantic search across runs. Each run generates a `run_summary.md` with score breakdown, failure chains, auditor findings, and trainer fixes.
+
+```bash
+# Search across all runs
+qmd query "cooking bill failures" -c frontier-runs
+qmd query "self sufficiency zero score" -c frontier-runs
+qmd query "recurring shelter issues" -c frontier-runs
+
+# Re-index after manual changes
+qmd update && qmd embed
+```
+
+Summaries are auto-generated at the end of runner.sh, run_auditor.sh, and run_trainer.sh.
+
 ## Key Gotchas
 
 - `build(blueprint, x, z)` — use positional args or `z=` keyword, NOT `y=`

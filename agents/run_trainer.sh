@@ -213,4 +213,10 @@ git commit -m "trainer: applied fixes from $(basename $(dirname $DIAGNOSIS_PATH)
 log "Changes committed in $AGENT_REPO. Review: git diff HEAD~1  Revert: git revert HEAD"
 
 log "Summary saved to: $SUMMARY_PATH"
+
+# Regenerate QMD summary (now includes trainer fixes)
+TRAIN_RESULT_DIR="$(dirname "$DIAGNOSIS_PATH")"
+python3 "$FRONTIER_DIR/frontier/summarize_run.py" "$TRAIN_RESULT_DIR" 2>/dev/null || true
+command -v qmd &>/dev/null && qmd update 2>/dev/null || true
+
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

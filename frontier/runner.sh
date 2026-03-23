@@ -961,6 +961,14 @@ PYEOF
 log "========== FRONTIER: $SCENARIO_NAME (run $RUN_ID) COMPLETE =========="
 log "Results: $RESULT_DIR/"
 
+# Generate searchable run summary for QMD
+python3 "$FRONTIER_DIR/frontier/summarize_run.py" "$RESULT_DIR" 2>/dev/null || true
+
+# Update QMD index (if collection exists)
+if command -v qmd &>/dev/null; then
+    qmd update 2>/dev/null || true
+fi
+
 # Log to pipeline
 RUN_SCORE=$(python3 -c "import json; d=json.load(open('$RESULT_DIR/score.json')); print(f'{d[\"pct\"]:.1f}%')" 2>/dev/null || echo "?")
 log_event "runner" "$SCENARIO_NAME" "run_$RUN_ID: $RUN_SCORE ($DURATION s)"

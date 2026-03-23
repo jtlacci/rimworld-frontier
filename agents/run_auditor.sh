@@ -194,3 +194,7 @@ except Exception as e:
 
 echo "[auditor] Audit saved to $RESULT_DIR/audit.json" >> "$LIVE_LOG"
 echo "[auditor] Audit saved to $RESULT_DIR/audit.json"
+
+# Regenerate QMD summary (now includes audit findings)
+python3 "$FRONTIER_DIR/frontier/summarize_run.py" "$RESULT_DIR" 2>/dev/null || true
+command -v qmd &>/dev/null && qmd update 2>/dev/null || true
