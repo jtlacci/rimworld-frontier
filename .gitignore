@@ -4,3 +4,6 @@ frontier/results/
 frontier/logs/*.jsonl
 frontier/logs/*.log
 frontier/logs/.last_check
+
+# frontier_state.json IS tracked — provides audit trail of frontier progression.
+# If merge conflicts occur, keep the version with more runs.

@@ -109,7 +109,13 @@ class ScenarioConfig:
         from savegen import generate_save as _generate_save
 
         if saves_dir is None:
-            saves_dir = Path.home() / "Library/Application Support/RimWorld/Saves"
+            import sys as _sys
+            if _sys.platform == "darwin":
+                saves_dir = Path.home() / "Library/Application Support/RimWorld/Saves"
+            elif _sys.platform == "win32":
+                saves_dir = Path.home() / "AppData/LocalLow/Ludeon Studios/RimWorld by Ludeon Studios/Saves"
+            else:
+                saves_dir = Path.home() / ".config/unity3d/Ludeon Studios/RimWorld by Ludeon Studios/Saves"
 
         source = saves_dir / "Baseline-Starter.rws"
         if not source.exists():

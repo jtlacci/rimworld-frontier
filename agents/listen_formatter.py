@@ -30,9 +30,6 @@ def shorten(path):
         path = path.replace(FRONTIER_DIR + '/', '')
     if AGENT_REPO:
         path = path.replace(AGENT_REPO + '/', 'agent/')
-    # Fallback: strip common prefix
-    path = path.replace('/Users/john/Desktop/rimworld-frontier/', '')
-    path = path.replace('/Users/john/Desktop/rimworld-tcp/', 'agent/')
     return path
 
 def agent_color():

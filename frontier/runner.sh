@@ -32,7 +32,13 @@ mkdir -p "$RESULT_DIR"
 # Copy scenario config to results
 cp "$SCENARIO_JSON" "$RESULT_DIR/scenario.json"
 
-RIMWORLD_APP="$HOME/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorldMac.app"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    RIMWORLD_APP="$HOME/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorldMac.app"
+elif [[ "$OSTYPE" == "linux"* ]]; then
+    RIMWORLD_APP="$HOME/.steam/steam/steamapps/common/RimWorld"
+else
+    RIMWORLD_APP="$PROGRAMFILES/Steam/steamapps/common/RimWorld"
+fi
 
 LIVE_LOG="$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
 log() {
@@ -154,8 +160,8 @@ r.close()
 print("Before snapshot saved")
 PYEOF
 
-# Clear stale token log
-rm -f surveys/token_log.jsonl
+# Clear stale token log (in agent repo)
+rm -f "$AGENT_REPO/surveys/token_log.jsonl"
 
 START_TS=$(date +%s)
 
