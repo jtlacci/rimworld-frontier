@@ -44,6 +44,25 @@ These are passed at runtime with scenario-specific context, but the core approac
 2. **P1 — Root cause fixes**: SDK/C# for mechanical issues, AGENT_OVERSEER.md for strategy issues.
 3. **P2 — Observability**: Add telemetry so next run provides better data.
 
+## QMD Search — Past Runs & Game Knowledge
+
+You have access to QMD for semantic search:
+
+**Past run results** (`frontier-runs`): Check what's been tried before — avoid repeating failed fixes, learn from what worked.
+```bash
+qmd query "what fixes were tried for cooking bills" -c frontier-runs
+qmd query "shelter scoring improvements" -c frontier-runs
+```
+
+**RimWorld game knowledge** (`rimworld-wiki`): Look up game mechanics before implementing fixes — build requirements, mood modifiers, research prerequisites.
+```bash
+qmd query "room impressiveness bonuses" -c rimworld-wiki
+qmd query "construction mechanics and helpers" -c rimworld-wiki
+qmd query "stockpile priorities and zoning" -c rimworld-wiki
+```
+
+Check past runs BEFORE implementing a fix — if the same approach was tried and reverted, try something different.
+
 ## Rules
 
 - NEVER edit scoring thresholds to inflate scores

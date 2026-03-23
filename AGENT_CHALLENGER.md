@@ -99,13 +99,27 @@ SCENARIO: <name> -> frontier/scenarios/<name>.json
 
 ## Research
 
-You have access to WebSearch and WebFetch. **Use them to validate RimWorld mechanics** before designing scenarios around them:
-- Does this animal actually go manhunter when shot? (Search: "rimworld [species] manhunter chance")
-- What temperature causes hypothermia? (Search: "rimworld hypothermia threshold")
-- How much meat does this animal yield? (Search: "rimworld [species] meat yield")
-- Can colonists survive on berries alone? (Search: "rimworld berry nutrition")
+You have access to WebSearch, WebFetch, and **QMD** for research:
 
-Design scenarios around verified mechanics, not assumptions. A well-researched dilemma is worth 10 guesses.
+**RimWorld game knowledge** (`rimworld-wiki`) — faster and more reliable than web search for core mechanics:
+```bash
+qmd query "animal meat yield and hunting" -c rimworld-wiki
+qmd query "hypothermia and cold weather survival" -c rimworld-wiki
+qmd query "food pipeline nutrition math" -c rimworld-wiki
+```
+
+**Past run results** (`frontier-runs`) — find what the overseer struggles with:
+```bash
+qmd query "which scenarios scored lowest" -c frontier-runs
+qmd query "food pipeline failures" -c frontier-runs
+qmd query "what mechanics has the overseer not learned" -c frontier-runs
+```
+
+**WebSearch/WebFetch** — for edge cases not in the wiki:
+- Does this animal actually go manhunter when shot? (Search: "rimworld [species] manhunter chance")
+- Specific defName lookups not in the wiki
+
+Prefer QMD over web search when possible — it's faster and curated for this project. Design scenarios around verified mechanics, not assumptions. A well-researched dilemma is worth 10 guesses.
 
 ## Do NOT Test (exclusion list)
 

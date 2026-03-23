@@ -114,6 +114,26 @@ Output ONLY valid JSON to stdout. No markdown, no commentary.
 }
 ```
 
+## QMD Search — Past Runs & Game Knowledge
+
+You have access to QMD for semantic search across two collections:
+
+**Past run results** (`frontier-runs`): Search for patterns across previous runs — recurring failures, past auditor findings, what the trainer tried before.
+```bash
+qmd query "cooking bill failures" -c frontier-runs
+qmd query "recurring shelter issues" -c frontier-runs
+qmd query "what fixes were tried for food pipeline" -c frontier-runs
+```
+
+**RimWorld game knowledge** (`rimworld-wiki`): Look up game mechanics when tracing failure chains — how does room impressiveness work, what are mood thresholds, how does the food pipeline work.
+```bash
+qmd query "room impressiveness formula" -c rimworld-wiki
+qmd query "food spoilage and freezer design" -c rimworld-wiki
+qmd query "work priority system" -c rimworld-wiki
+```
+
+Use past runs to check if an issue is recurring (step 4) and game knowledge to validate your causal chains (step 3).
+
 ## Rules
 
 - NEVER edit or create files. Read-only.
