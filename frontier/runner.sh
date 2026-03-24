@@ -130,6 +130,32 @@ if [[ $LOAD_OK -ne 1 ]]; then
 fi
 
 log "Save loaded, incidents disabled, items unforbidden"
+
+# Spawn scenario wildlife via SDK (not baked into save — GenSpawn blocker would kill them)
+python3 << PYEOF
+import sys, json; sys.path.insert(0, '$AGENT_REPO/sdk')
+from rimworld import RimClient
+config = json.load(open('$SCENARIO_JSON'))
+dist = config.get('wildlife_distribution') or {}
+if not dist and config.get('wildlife_count', 0) > 0:
+    species = config.get('wildlife_species', [])
+    count = config.get('wildlife_count', 0)
+    if species:
+        per = max(1, count // len(species))
+        dist = {s: per for s in species}
+if dist:
+    r = RimClient()
+    for species, count in dist.items():
+        try:
+            result = r.spawn_animals(species, count)
+            print(f"  Spawned {count}x {species}")
+        except Exception as e:
+            print(f"  WARN: Failed to spawn {species}: {e}")
+    r.close()
+else:
+    print("  No wildlife to spawn")
+PYEOF
+
 phase_mark "load_save" "end"
 
 # ─── Phase 2: Before snapshot ───
