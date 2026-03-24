@@ -123,13 +123,13 @@ if marker in text:
         build_lines.append(line)
     content = '\n'.join(build_lines).strip()
     if content and content != marker:
-        with open('$SCENARIO_DIR/build_requests.md', 'a') as f:
-            f.write(f'\n### Run $RUN_ID\n')
+        with open('$FRONTIER_DIR/build_requests.md', 'a') as f:
+            f.write(f'\n### $SCENARIO_NAME — run $RUN_ID\n')
             # Write everything after the heading
             body = '\n'.join(build_lines[1:]).strip()
             if body:
                 f.write(body + '\n')
-        print(f'  Build requests appended to $SCENARIO_DIR/build_requests.md')
+        print(f'  Build requests appended to $FRONTIER_DIR/build_requests.md')
 " 2>/dev/null || true
 
 echo "[auditor] Audit saved to $RESULT_DIR/audit.md" >> "$LIVE_LOG"
