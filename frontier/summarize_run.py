@@ -323,3 +323,15 @@ if __name__ == "__main__":
     with open(out_path, "w") as f:
         f.write(summary)
     print(f"Summary written to {out_path}")
+
+    # Copy raw artifacts to .md so QMD indexes them (collection pattern is **/*.md)
+    copy_as_md = [
+        ("overseer_conversation.txt", "overseer_conversation.md"),
+        ("audit.json", "audit.md"),
+    ]
+    for src_name, dst_name in copy_as_md:
+        src = os.path.join(result_dir, src_name)
+        dst = os.path.join(result_dir, dst_name)
+        if os.path.exists(src):
+            import shutil
+            shutil.copy2(src, dst)
