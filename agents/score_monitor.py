@@ -246,7 +246,8 @@ while True:
             name = c.get("name", "")
             short = name.split("'")[1] if "'" in name else name.split()[-1]
             job = c.get("currentJob", "Idle")
-            colonist_jobs[short] = job
+            target = c.get("jobTarget", "")
+            colonist_jobs[short] = f"{job}:{target}" if target else job
             if job == "FleeAndCower":
                 combat_fleeing.append(short)
             elif job == "Wait_Downed":
@@ -332,11 +333,15 @@ while True:
                             if isinstance(v, (int, float)) and
                             (k.startswith("Meat_") or k in ("RawBerries", "RawRice", "RawCorn", "RawPotatoes", "RawFungus")))
         total_meals = resources.get("MealSimple", 0) + resources.get("MealFine", 0) + resources.get("MealLavish", 0)
+        cookable_meals = total_raw_food // 10  # ~10 raw food units ≈ 0.5 nutrition = 1 simple meal
+        sub_cookable = total_raw_food > 0 and total_raw_food < 10
         food_pipeline = {
             "has_cooking_station": has_cooking_station,
             "has_bills": has_bills,
             "raw_food": total_raw_food,
             "meals": total_meals,
+            "cookable_meals": cookable_meals,
+            "sub_cookable": sub_cookable,
             "wild_animals": wild_animal_count,
             "food_in_stockpile": total_raw_food + total_meals,
         }
