@@ -94,11 +94,11 @@ unset CLAUDECODE
 echo '{"_agent":"trainer","type":"agent_start"}' >> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
 env -u CLAUDECODE claude -p \
     --model "opus" \
-    --max-turns 40 \
+    --max-turns 200 \
     --output-format stream-json \
     --verbose \
     --dangerously-skip-permissions \
-    --allowedTools "Bash,Read,Edit,Write,Glob,Grep" \
+    --allowedTools "Bash,Read,Edit,Write,Glob,Grep,mcp__qmd__query,mcp__qmd__search" \
     --system-prompt "$TRAINER_PROMPT" \
     --no-session-persistence \
     "Project root (agent repo): $AGENT_REPO

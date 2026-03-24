@@ -119,11 +119,11 @@ log "Spawning challenger agent..."
 echo '{"_agent":"challenger","type":"agent_start"}' >> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
 env -u CLAUDECODE claude -p \
     --model "sonnet" \
-    --max-turns 50 \
+    --max-turns 200 \
     --output-format stream-json \
     --verbose \
     --dangerously-skip-permissions \
-    --allowedTools "Write,WebSearch,WebFetch" \
+    --allowedTools "Write,WebSearch,WebFetch,mcp__qmd__query,mcp__qmd__search" \
     --no-session-persistence \
     --system-prompt "$CHALLENGER_PROMPT" \
     "Design the next version of this scenario. Project root: $FRONTIER_DIR
@@ -144,18 +144,7 @@ INSTRUCTIONS:
     > >(tee -a $FRONTIER_DIR/frontier/logs/agent_live.jsonl > "$TMPFILE") 2>> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl" &
 CHALLENGER_PID=$!
 
-CHALLENGER_TIMEOUT=600
-ELAPSED=0
-while kill -0 "$CHALLENGER_PID" 2>/dev/null; do
-    sleep 5
-    ELAPSED=$((ELAPSED + 5))
-    if [[ $ELAPSED -ge $CHALLENGER_TIMEOUT ]]; then
-        log "WARNING: Challenger hit ${CHALLENGER_TIMEOUT}s timeout — killing"
-        kill "$CHALLENGER_PID" 2>/dev/null; sleep 2
-        kill -9 "$CHALLENGER_PID" 2>/dev/null || true
-        break
-    fi
-done
+wait "$CHALLENGER_PID"
 wait "$CHALLENGER_PID" 2>/dev/null || true
 
 # Extract text from stream-json

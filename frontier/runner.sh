@@ -331,11 +331,11 @@ OVERSEER_EXIT=0
 echo '{"_agent":"overseer","type":"agent_start"}' >> "$LIVE_LOG"
 env -u CLAUDECODE claude -p \
     --model "$OVERSEER_MODEL" \
-    --max-turns 80 \
+    --max-turns 200 \
     --output-format stream-json \
     --verbose \
     --dangerously-skip-permissions \
-    --allowedTools "Bash,Read,Write" \
+    --allowedTools "Bash,Read,Write,mcp__qmd__query,mcp__qmd__search" \
     --system-prompt "$SYSTEM_PROMPT" \
     --no-session-persistence \
     "Run the colony on this ${MAP_SIZE}x${MAP_SIZE} map (scenario: $SCENARIO_NAME).

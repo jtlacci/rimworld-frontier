@@ -88,10 +88,10 @@ echo '{"_agent":"auditor","type":"agent_start"}' >> "$LIVE_LOG"
 AUDITOR_TMP=$(mktemp)
 env -u CLAUDECODE claude -p \
     --model opus \
-    --max-turns 25 \
+    --max-turns 200 \
     --output-format stream-json \
     --verbose \
-    --allowedTools "Read,Bash,Glob,Grep" \
+    --allowedTools "Read,Bash,Glob,Grep,mcp__qmd__query,mcp__qmd__search" \
     --dangerously-skip-permissions \
     --no-session-persistence \
     --system-prompt "$SYSTEM_PROMPT" \
