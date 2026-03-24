@@ -44,24 +44,21 @@ These are passed at runtime with scenario-specific context, but the core approac
 2. **P1 — Root cause fixes**: SDK/C# for mechanical issues, AGENT_OVERSEER.md for strategy issues.
 3. **P2 — Observability**: Add telemetry so next run provides better data.
 
-## QMD Search — Past Runs & Game Knowledge
+## QMD Search — Past Runs, Auditor Outputs & Game Knowledge
 
-You have access to QMD for semantic search:
+You have QMD available via MCP tools (`mcp__qmd__query` and `mcp__qmd__search`). Use these — NOT the `qmd` CLI command.
 
-**Past run results** (`frontier-runs`): Check what's been tried before — avoid repeating failed fixes, learn from what worked.
-```bash
-qmd query "what fixes were tried for cooking bills" -c frontier-runs
-qmd query "shelter scoring improvements" -c frontier-runs
-```
+### BEFORE implementing any fix, search for prior attempts (`-c frontier-runs`)
+This collection contains ALL past run artifacts: **auditor findings** (failure chains, root causes, recommended fixes), **trainer changelogs** (what was changed and why), **overseer conversations** (full tool calls and decisions), and score breakdowns.
 
-**RimWorld game knowledge** (`rimworld-wiki`): Look up game mechanics before implementing fixes — build requirements, mood modifiers, research prerequisites.
-```bash
-qmd query "room impressiveness bonuses" -c rimworld-wiki
-qmd query "construction mechanics and helpers" -c rimworld-wiki
-qmd query "stockpile priorities and zoning" -c rimworld-wiki
-```
+**You MUST check this before coding.** If the same fix was tried and reverted, try a different approach.
 
-Check past runs BEFORE implementing a fix — if the same approach was tried and reverted, try something different.
+Examples: `"what fixes were tried for cooking bills"`, `"auditor food pipeline root cause"`, `"trainer changelog shelter"`, `"overseer berry harvesting conversation"`
+
+### RimWorld game knowledge (`-c rimworld-wiki`)
+41 pages of verified game mechanics. Look up build requirements, mood modifiers, research prerequisites, food nutrition math, room design rules BEFORE implementing fixes. Don't guess — verify.
+
+Examples: `"room impressiveness bonuses"`, `"construction mechanics"`, `"stockpile priorities"`, `"cooking bill mechanics"`
 
 ## Rules
 

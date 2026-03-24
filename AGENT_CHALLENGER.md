@@ -99,27 +99,23 @@ SCENARIO: <name> -> frontier/scenarios/<name>.json
 
 ## Research
 
-You have access to WebSearch, WebFetch, and **QMD** for research:
+You have QMD via MCP tools (`mcp__qmd__query` and `mcp__qmd__search`), plus WebSearch and WebFetch. **Prefer QMD over web search** — it's faster and curated for this project.
 
-**RimWorld game knowledge** (`rimworld-wiki`) — faster and more reliable than web search for core mechanics:
-```bash
-qmd query "animal meat yield and hunting" -c rimworld-wiki
-qmd query "hypothermia and cold weather survival" -c rimworld-wiki
-qmd query "food pipeline nutrition math" -c rimworld-wiki
-```
+### RimWorld game knowledge (`-c rimworld-wiki`)
+41 pages of verified mechanics. Use for feasibility checks — nutrition math, temperature thresholds, animal stats, build requirements. Don't design scenarios around unverified assumptions.
 
-**Past run results** (`frontier-runs`) — find what the overseer struggles with:
-```bash
-qmd query "which scenarios scored lowest" -c frontier-runs
-qmd query "food pipeline failures" -c frontier-runs
-qmd query "what mechanics has the overseer not learned" -c frontier-runs
-```
+Examples: `"animal meat yield hunting"`, `"hypothermia cold survival"`, `"food pipeline nutrition math"`, `"mood thresholds mental break"`
 
-**WebSearch/WebFetch** — for edge cases not in the wiki:
-- Does this animal actually go manhunter when shot? (Search: "rimworld [species] manhunter chance")
-- Specific defName lookups not in the wiki
+### Past runs, auditor findings, and trainer history (`-c frontier-runs`)
+Search ALL past artifacts: **auditor failure chains** (what broke and why), **trainer changelogs** (what was fixed), **overseer conversations** (what the agent actually did), score breakdowns. Use this to:
+- Find what the overseer **actually fails at** (not what you think it fails at)
+- See what the trainer has already fixed (don't design scenarios around solved problems)
+- Read overseer conversations to understand its decision-making patterns
 
-Prefer QMD over web search when possible — it's faster and curated for this project. Design scenarios around verified mechanics, not assumptions. A well-researched dilemma is worth 10 guesses.
+Examples: `"food pipeline failures"`, `"auditor shelter root cause"`, `"trainer changelog"`, `"overseer struggled with"`, `"which scenarios scored lowest"`
+
+### WebSearch/WebFetch
+For edge cases not in the wiki — manhunter chances, specific species stats, modded mechanics.
 
 ## Do NOT Test (exclusion list)
 
