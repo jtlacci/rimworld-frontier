@@ -38,22 +38,25 @@ For each thread, peel back layers. Use targeted tools — never read a whole fil
 - Query QMD (`mcp__qmd__query`, collection `rimworld-wiki`): verify your assumptions about the mechanic
 - Don't guess how RimWorld works — look it up
 
-**Layer 5 — Hypothesis**
-- Form your hypothesis based on Layers 1-4.
+**Layer 5 — Form 3 hypotheses**
+Based on Layers 1-4, form exactly 3 competing hypotheses for the root cause. They should be meaningfully different — not variations of the same idea. At least one should challenge your initial assumption.
 
-**Layer 6 — Falsify**
-This is the most important layer. **Try to DISPROVE your hypothesis.** Ask yourself:
-- "What would I expect to see if my hypothesis is WRONG?"
-- "What upstream assumption am I making that I haven't verified?"
-- "Is the thing I think failed actually what I think it is?"
+Example for "berries not harvested":
+- H1: PlantCutting competition from grow zone diverted labor
+- H2: Berry bushes weren't at harvestable growth (savegen/game state issue)
+- H3: Harvest designation was placed but colonists couldn't path to the bushes
 
-Example: If your hypothesis is "berry bushes weren't harvested because of PlantCutting competition" — check: **were the berry bushes even harvestable?** Check their growth state. If they were at 40% growth, the competition is irrelevant — they couldn't be harvested regardless.
+**Layer 6 — Falsify each hypothesis**
+For EACH hypothesis, look for evidence that would **disprove** it:
+- Check one level deeper — verify the precondition exists
+- If you think X didn't happen, verify X was even possible
+- If you think A caused B, check if B happens without A
 
-Always check one level deeper than your hypothesis. If you think the problem is X not happening, verify that X was even possible. If you think resource A ran out, verify A existed in the first place.
+**If a hypothesis survives falsification** → it's your root cause. State what you checked and why it wasn't disproved.
 
-Only declare root cause AFTER you've tried to disprove it and failed. State what you checked to falsify and why it didn't disprove your theory.
+**If ALL 3 are falsified** → go back to Layer 5. Form 3 new hypotheses informed by what you just learned. Try once more.
 
-- If you can't find root cause because the DATA doesn't exist, that's a build request (see Phase 3).
+**If ALL 3 are falsified AGAIN** → mark the thread as **INCONCLUSIVE**. Document what you checked and what's missing. File a build request for the observability gap that blocked you. Move to the next thread. Don't force a root cause you can't support.
 
 Only read `AGENT_OVERSEER.md` if investigating an execution gap (prompt said X, overseer did Y). Only read `after.json` if you need final colony state. Only read `machine_report.json` if you need SDK-reported issues. Don't read files speculatively.
 
@@ -77,10 +80,14 @@ Structure:
 [Your investigation narrative — what you checked, what you found,
  layer by layer. Cite evidence: snapshot numbers, timestamps, grep results.]
 
-**Hypothesis**: [what you think went wrong]
-**Falsification attempts**: [what you checked to disprove it, and what you found]
-**Root cause**: [one sentence — only after falsification failed]
+### Hypotheses
+- H1: [hypothesis] → **falsified/survived** — [evidence]
+- H2: [hypothesis] → **falsified/survived** — [evidence]
+- H3: [hypothesis] → **falsified/survived** — [evidence]
+
+**Root cause**: [the surviving hypothesis, one sentence]
 **Confidence**: high/medium/low
+(or **INCONCLUSIVE** if all falsified twice — with build request for what's missing)
 **Fix**: [where and what to change — sdk/prompt/csharp/scoring]
 
 ## Thread: {next metric} ...
