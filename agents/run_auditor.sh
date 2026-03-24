@@ -110,26 +110,40 @@ echo "  Build requests: $BUILD_REQS"
 # Extract build requests to scenario-level file
 python3 -c "
 import sys
-text = open('$RESULT_DIR/audit.md').read()
+import re
+
+audit_text = open('$RESULT_DIR/audit.md').read()
+br_path = '$FRONTIER_DIR/build_requests.md'
+
 marker = '## Build Requests'
-if marker in text:
-    section = text[text.index(marker):]
-    # Stop at next ## heading or end
+if marker in audit_text:
+    section = audit_text[audit_text.index(marker):]
     lines = section.split('\n')
-    build_lines = [lines[0]]
+    new_items = []
     for line in lines[1:]:
         if line.startswith('## '):
             break
-        build_lines.append(line)
-    content = '\n'.join(build_lines).strip()
-    if content and content != marker:
-        with open('$FRONTIER_DIR/build_requests.md', 'a') as f:
-            f.write(f'\n### $SCENARIO_NAME — run $RUN_ID\n')
-            # Write everything after the heading
-            body = '\n'.join(build_lines[1:]).strip()
-            if body:
-                f.write(body + '\n')
-        print(f'  Build requests appended to $FRONTIER_DIR/build_requests.md')
+        if line.strip().startswith('- **'):
+            new_items.append(line.strip())
+
+    if new_items:
+        # Read existing requests to deduplicate by bold title
+        existing = ''
+        try:
+            existing = open(br_path).read()
+        except FileNotFoundError:
+            pass
+        existing_titles = set(re.findall(r'\*\*([^*]+)\*\*', existing))
+
+        added = 0
+        with open(br_path, 'a') as f:
+            for item in new_items:
+                title = re.search(r'\*\*([^*]+)\*\*', item)
+                if title and title.group(1) not in existing_titles:
+                    f.write('\n' + item + '\n')
+                    added += 1
+        if added:
+            print(f'  {added} new build request(s) added to build_requests.md')
 " 2>/dev/null || true
 
 echo "[auditor] Audit saved to $RESULT_DIR/audit.md" >> "$LIVE_LOG"
