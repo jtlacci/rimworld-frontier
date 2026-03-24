@@ -237,7 +237,7 @@ PYEOF
 log "Starting score monitor (20s intervals)..."
 # P0 fix: truncate stale timeline data to prevent merging with previous captures
 > "$RESULT_DIR/score_timeline.jsonl"
-AGENT_REPO="$AGENT_REPO" python3 "$FRONTIER_DIR/agents/score_monitor.py" "$RESULT_DIR" 20 &
+AGENT_REPO="$AGENT_REPO" python3 "$FRONTIER_DIR/agents/score_monitor.py" "$RESULT_DIR" 1 &
 MONITOR_PID=$!
 phase_mark "smoke_test" "end"
 
