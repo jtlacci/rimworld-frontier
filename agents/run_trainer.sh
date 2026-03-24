@@ -116,26 +116,10 @@ $DIAGNOSIS_CONTENT" \
     > >(tee -a $FRONTIER_DIR/frontier/logs/agent_live.jsonl > "$TMPFILE") 2>> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl" &
 TRAINER_PID=$!
 
-# Wait with timeout (10 min max for trainer)
-TRAINER_TIMEOUT=600
-ELAPSED=0
-while kill -0 "$TRAINER_PID" 2>/dev/null; do
-    sleep 5
-    ELAPSED=$((ELAPSED + 5))
-    if [[ $ELAPSED -ge $TRAINER_TIMEOUT ]]; then
-        log "WARNING: Trainer hit ${TRAINER_TIMEOUT}s timeout — killing"
-        kill "$TRAINER_PID" 2>/dev/null
-        sleep 2
-        kill -9 "$TRAINER_PID" 2>/dev/null || true
-        TRAINER_EXIT=124
-        break
-    fi
-done
+# Wait for trainer to finish (no timeout)
+wait "$TRAINER_PID" || TRAINER_EXIT=$?
 
-if [[ $TRAINER_EXIT -ne 124 ]]; then
-    wait "$TRAINER_PID" || TRAINER_EXIT=$?
-fi
-
+ELAPSED=$(( $(date +%s) - $(date -r "$TMPFILE" +%s 2>/dev/null || echo $(date +%s)) ))
 log "Trainer finished (exit=$TRAINER_EXIT, ${ELAPSED}s)"
 
 # Extract trainer output from stream-json
