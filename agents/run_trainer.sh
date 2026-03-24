@@ -1,9 +1,9 @@
 #!/bin/bash
-# Trainer agent — reads an audit JSON and applies code fixes.
-# Usage: ./agents/run_trainer.sh <audit_json_path>
+# Trainer agent — reads an audit report and applies code fixes.
+# Usage: ./agents/run_trainer.sh <audit_path>
 #
 # Example:
-#   ./agents/run_trainer.sh frontier/results/baseline/run_009/audit.json
+#   ./agents/run_trainer.sh frontier/results/baseline/run_009/audit.md
 #
 # Creates a git savepoint in the AGENT repo before running.
 # If the trainer breaks things: cd $AGENT_REPO && git revert HEAD

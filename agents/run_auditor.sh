@@ -1,9 +1,9 @@
 #!/bin/bash
-# Deep-investigation auditor for a single run.
+# Thread-pulling auditor for a single run.
 # Usage: ./agents/run_auditor.sh <result_dir>
 # Example: ./agents/run_auditor.sh frontier/results/baseline/run_008
 #
-# Output: <result_dir>/audit.json
+# Output: <result_dir>/audit.md
 
 set -eo pipefail
 
@@ -41,48 +41,29 @@ RUN_ID=$(basename "$RESULT_DIR" | sed 's/run_0*//' | sed 's/^$/0/')
 SCENARIO_DIR=$(dirname "$RESULT_DIR")
 SCENARIO_NAME=$(basename "$SCENARIO_DIR")
 
-# Find previous run's audit.json for recurring issue detection
-PREV_AUDIT=""
-PREV_RUN_NUM=$((RUN_ID - 1))
-PREV_RUN_DIR=$(printf "%s/run_%03d" "$SCENARIO_DIR" "$PREV_RUN_NUM")
-if [[ -f "$PREV_RUN_DIR/audit.json" ]]; then
-    PREV_AUDIT="$PREV_RUN_DIR/audit.json"
-    echo "[auditor] Found previous audit: $PREV_AUDIT" >> "$LIVE_LOG"
-    echo "[auditor] Found previous audit: $PREV_AUDIT"
-fi
-
 echo "[auditor] Investigating $RESULT_DIR (scenario=$SCENARIO_NAME, run=$RUN_ID)..." >> "$LIVE_LOG"
 echo "[auditor] Investigating $RESULT_DIR (scenario=$SCENARIO_NAME, run=$RUN_ID)..."
 
 SYSTEM_PROMPT="$(cat "$PROMPT_FILE")"
 
-# Build the investigation instructions
+# Triage instructions — auditor decides what to read
 INSTRUCTIONS="Investigate the run results in: $RESULT_DIR (scenario=$SCENARIO_NAME, run_id=$RUN_ID)
 
-Read files in this order:
-0. $RESULT_DIR/scenario.json — scenario constraints. Focus your investigation on failures most relevant to these constraints (e.g. if starting_packs=0, food pipeline is critical from tick 0).
-1. $RESULT_DIR/score.json — compute points_lost per metric, identify 2+ point losses
-2. $AGENT_REPO/AGENT_OVERSEER.md — extract every concrete action the overseer is told to do
-3. $RESULT_DIR/score_timeline.jsonl — read first 5 lines, last 5 lines, and 3 lines from the middle. Track building_defs, food_pipeline, jobs, rooms across time.
-4. $RESULT_DIR/overseer_conversation.txt — what did the overseer report doing? What SDK calls were made?
-5. $RESULT_DIR/colony_map.txt — visual layout verification
-6. $RESULT_DIR/machine_report.json — SDK-reported issues
-7. $RESULT_DIR/after.json — final colony state (rooms, thoughts, research)"
+Start with:
+- $RESULT_DIR/score.json — triage, find top 3 point losses
+- $RESULT_DIR/scenario.json — understand what's being tested
 
-if [[ -n "$PREV_AUDIT" ]]; then
-    INSTRUCTIONS="$INSTRUCTIONS
-8. $PREV_AUDIT — previous run's audit. Check if issues flagged there are still present."
-fi
+Then investigate each thread using Grep and QMD. Files available:
+- $RESULT_DIR/score_timeline.jsonl — 1s snapshots (use Grep, don't Read)
+- $RESULT_DIR/command_log.jsonl — every SDK call with timing (use Grep)
+- $RESULT_DIR/overseer_conversation.txt — full overseer output (use Grep)
+- $RESULT_DIR/colony_map.txt — ASCII map (Read only if spatial thread)
+- $RESULT_DIR/machine_report.json — SDK issues (Read only if relevant)
+- $RESULT_DIR/after.json — final state (Read only if relevant)
+- $AGENT_REPO/AGENT_OVERSEER.md — overseer instructions (Read only if investigating execution gap)
 
-INSTRUCTIONS="$INSTRUCTIONS
+Write your full investigation as markdown — the thinking process IS the output."
 
-Also read if they exist: $RESULT_DIR/scenario.json, $RESULT_DIR/telemetry_errors.log
-
-Cross-reference AGENT_OVERSEER.md phases against timeline building_defs. Flag every action the prompt prescribes that doesn't appear in the actual build history.
-
-Then produce the JSON audit. Output ONLY the JSON object, nothing else."
-
-LIVE_LOG="$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
 live() { echo "$1"; echo "$1" >> "$LIVE_LOG"; }
 echo '{"_agent":"auditor","type":"agent_start"}' >> "$LIVE_LOG"
 AUDITOR_TMP=$(mktemp)
@@ -97,10 +78,9 @@ env -u CLAUDECODE claude -p \
     --system-prompt "$SYSTEM_PROMPT" \
     "$INSTRUCTIONS" > >(tee -a "$LIVE_LOG" > "$AUDITOR_TMP") 2>> "$LIVE_LOG"
 
-# Extract text from stream-json
-OUTPUT=""
-OUTPUT=$(python3 -c "
-import json, sys
+# Extract full text from stream-json → save as audit.md
+python3 -c "
+import json
 parts = []
 with open('$AUDITOR_TMP') as f:
     for line in f:
@@ -116,85 +96,45 @@ with open('$AUDITOR_TMP') as f:
                 parts.append(event['result'])
         except: pass
 print('\n'.join(parts))
-" 2>/dev/null) || true
+" > "$RESULT_DIR/audit.md" 2>/dev/null || true
 rm -f "$AUDITOR_TMP"
 
-# Extract JSON from output
-JSON_OUTPUT=$(echo "${OUTPUT:-}" | python3 -c "
-import sys, json, re
-
-text = sys.stdin.read()
-
-# Find the outermost JSON object containing expected keys
-best = None
-for m in re.finditer(r'\{', text):
-    start = m.start()
-    depth = 0
-    for i in range(start, len(text)):
-        if text[i] == '{':
-            depth += 1
-        elif text[i] == '}':
-            depth -= 1
-            if depth == 0:
-                candidate = text[start:i+1]
-                try:
-                    parsed = json.loads(candidate)
-                    # Prefer objects with our expected keys
-                    if 'failure_chains' in parsed or 'execution_gaps' in parsed:
-                        print(json.dumps(parsed, indent=2))
-                        sys.exit(0)
-                    if best is None:
-                        best = candidate
-                except json.JSONDecodeError:
-                    pass
-                break
-
-if best:
-    try:
-        print(json.dumps(json.loads(best), indent=2))
-    except Exception:
-        print(best)
-else:
-    print(json.dumps({'error': 'No valid JSON found in auditor output', 'raw_length': len(text)}))
-" 2>/dev/null) || true
-
-if [[ -z "${JSON_OUTPUT:-}" ]]; then
-    echo "[auditor] ERROR: No output from auditor agent" >&2
-    echo '{"error": "auditor produced no output"}' > "$RESULT_DIR/audit.json"
-    exit 1
-fi
-
-echo "$JSON_OUTPUT" > "$RESULT_DIR/audit.json"
-
 # Print summary
+SCORE=$(python3 -c "import json; print(f'{json.load(open(\"$RESULT_DIR/score.json\"))[\"pct\"]:.1f}')" 2>/dev/null || echo "?")
+THREADS=$(grep -c '^## Thread' "$RESULT_DIR/audit.md" 2>/dev/null || echo "0")
+BUILD_REQS=$(grep -c '^\- ' <(sed -n '/^## Build Requests/,/^## /p' "$RESULT_DIR/audit.md") 2>/dev/null || echo "0")
+echo "  Score: ${SCORE}%"
+echo "  Threads investigated: $THREADS"
+echo "  Build requests: $BUILD_REQS"
+
+# Extract build requests to scenario-level file
 python3 -c "
-import sys, json
-try:
-    d = json.loads(sys.stdin.read())
-    gaps = d.get('execution_gaps', [])
-    chains = d.get('failure_chains', [])
-    recurring = d.get('recurring_issues', [])
-    telemetry = d.get('telemetry_issues', [])
-    print(f'  Score: {d.get(\"score_pct\", \"?\")}%')
-    print(f'  Execution gaps: {len(gaps)}')
-    for g in gaps[:3]:
-        print(f'    - {g.get(\"expected\", \"?\")[:80]}')
-    print(f'  Failure chains: {len(chains)}')
-    for c in chains[:5]:
-        print(f'    [{c.get(\"category\",\"?\")}] {c.get(\"metric\",\"?\")}: -{c.get(\"points_lost\",0):.1f}pts -> {c.get(\"root_cause\",\"?\")[:80]}')
-    if recurring:
-        print(f'  Recurring issues: {len(recurring)}')
-        for r in recurring[:3]:
-            print(f'    - {r.get(\"issue\", \"?\")[:80]}')
-    if telemetry:
-        print(f'  Telemetry issues: {len(telemetry)}')
-except Exception as e:
-    print(f'  Parse error: {e}')
-" <<< "$JSON_OUTPUT"
+import sys
+text = open('$RESULT_DIR/audit.md').read()
+marker = '## Build Requests'
+if marker in text:
+    section = text[text.index(marker):]
+    # Stop at next ## heading or end
+    lines = section.split('\n')
+    build_lines = [lines[0]]
+    for line in lines[1:]:
+        if line.startswith('## '):
+            break
+        build_lines.append(line)
+    content = '\n'.join(build_lines).strip()
+    if content and content != marker:
+        with open('$SCENARIO_DIR/build_requests.md', 'a') as f:
+            f.write(f'\n### Run $RUN_ID\n')
+            # Write everything after the heading
+            body = '\n'.join(build_lines[1:]).strip()
+            if body:
+                f.write(body + '\n')
+        print(f'  Build requests appended to $SCENARIO_DIR/build_requests.md')
+" 2>/dev/null || true
 
-echo "[auditor] Audit saved to $RESULT_DIR/audit.json" >> "$LIVE_LOG"
-echo "[auditor] Audit saved to $RESULT_DIR/audit.json"
+echo "[auditor] Audit saved to $RESULT_DIR/audit.md" >> "$LIVE_LOG"
+echo "[auditor] Audit saved to $RESULT_DIR/audit.md"
 
-# Regenerate QMD summary (now includes audit findings)
+# Regenerate QMD summary (audit.md is already markdown — QMD indexes it directly)
 python3 "$FRONTIER_DIR/frontier/summarize_run.py" "$RESULT_DIR" 2>/dev/null || true
 command -v qmd &>/dev/null && qmd update 2>/dev/null || true

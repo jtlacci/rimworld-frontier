@@ -213,51 +213,22 @@ def summarize(result_dir):
         lines.append("")
 
     # --- Audit (if available) ---
-    audit = load_json(os.path.join(result_dir, "audit.json"))
-    if audit:
-        lines.append("## Auditor Analysis\n")
-
-        failure_chains = audit.get("failure_chains", [])
-        if failure_chains:
-            lines.append("### Failure Chains\n")
-            for chain in failure_chains:
-                if isinstance(chain, dict):
-                    root = chain.get("root_cause", chain.get("cause", ""))
-                    effect = chain.get("effect", chain.get("impact", ""))
-                    lines.append(f"- **{root}** → {effect}")
-                else:
-                    lines.append(f"- {chain}")
+    # audit.md is the full investigation — include it directly
+    audit_md_path = os.path.join(result_dir, "audit.md")
+    audit_json_path = os.path.join(result_dir, "audit.json")
+    if os.path.exists(audit_md_path):
+        with open(audit_md_path) as f:
+            audit_text = f.read().strip()
+        if audit_text:
+            lines.append("## Auditor Investigation\n")
+            lines.append(audit_text)
             lines.append("")
-
-        exec_gaps = audit.get("execution_gaps", [])
-        if exec_gaps:
-            lines.append("### Execution Gaps\n")
-            for gap in exec_gaps:
-                if isinstance(gap, dict):
-                    lines.append(f"- {gap.get('description', gap)}")
-                else:
-                    lines.append(f"- {gap}")
-            lines.append("")
-
-        recurring = audit.get("recurring_issues", [])
-        if recurring:
-            lines.append("### Recurring Issues\n")
-            for issue in recurring:
-                if isinstance(issue, dict):
-                    lines.append(f"- {issue.get('description', issue)}")
-                else:
-                    lines.append(f"- {issue}")
-            lines.append("")
-
-        recommendations = audit.get("recommendations", audit.get("fixes", []))
-        if recommendations:
-            lines.append("### Recommendations\n")
-            for rec in recommendations:
-                if isinstance(rec, dict):
-                    lines.append(f"- [{rec.get('priority', '?')}] {rec.get('description', rec)}")
-                else:
-                    lines.append(f"- {rec}")
-            lines.append("")
+    elif os.path.exists(audit_json_path):
+        # Legacy: old JSON audits
+        audit = load_json(audit_json_path)
+        if audit:
+            lines.append("## Auditor Analysis (legacy JSON)\n")
+            lines.append(f"```json\n{json.dumps(audit, indent=2)[:2000]}\n```\n")
 
     # --- Trainer Fixes ---
     trainer_changelog = load_json(os.path.join(result_dir, "trainer_changelog.json"))
@@ -325,9 +296,9 @@ if __name__ == "__main__":
     print(f"Summary written to {out_path}")
 
     # Copy raw artifacts to .md so QMD indexes them (collection pattern is **/*.md)
+    # audit.md is already markdown — no copy needed
     copy_as_md = [
         ("overseer_conversation.txt", "overseer_conversation.md"),
-        ("audit.json", "audit.md"),
     ]
     for src_name, dst_name in copy_as_md:
         src = os.path.join(result_dir, src_name)
