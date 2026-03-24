@@ -38,8 +38,21 @@ For each thread, peel back layers. Use targeted tools — never read a whole fil
 - Query QMD (`mcp__qmd__query`, collection `rimworld-wiki`): verify your assumptions about the mechanic
 - Don't guess how RimWorld works — look it up
 
-**Layer 5 — Root cause**
-- Form your hypothesis. Cite specific evidence (snapshot numbers, timestamps, grep matches).
+**Layer 5 — Hypothesis**
+- Form your hypothesis based on Layers 1-4.
+
+**Layer 6 — Falsify**
+This is the most important layer. **Try to DISPROVE your hypothesis.** Ask yourself:
+- "What would I expect to see if my hypothesis is WRONG?"
+- "What upstream assumption am I making that I haven't verified?"
+- "Is the thing I think failed actually what I think it is?"
+
+Example: If your hypothesis is "berry bushes weren't harvested because of PlantCutting competition" — check: **were the berry bushes even harvestable?** Check their growth state. If they were at 40% growth, the competition is irrelevant — they couldn't be harvested regardless.
+
+Always check one level deeper than your hypothesis. If you think the problem is X not happening, verify that X was even possible. If you think resource A ran out, verify A existed in the first place.
+
+Only declare root cause AFTER you've tried to disprove it and failed. State what you checked to falsify and why it didn't disprove your theory.
+
 - If you can't find root cause because the DATA doesn't exist, that's a build request (see Phase 3).
 
 Only read `AGENT_OVERSEER.md` if investigating an execution gap (prompt said X, overseer did Y). Only read `after.json` if you need final colony state. Only read `machine_report.json` if you need SDK-reported issues. Don't read files speculatively.
@@ -64,7 +77,9 @@ Structure:
 [Your investigation narrative — what you checked, what you found,
  layer by layer. Cite evidence: snapshot numbers, timestamps, grep results.]
 
-**Root cause**: [one sentence]
+**Hypothesis**: [what you think went wrong]
+**Falsification attempts**: [what you checked to disprove it, and what you found]
+**Root cause**: [one sentence — only after falsification failed]
 **Confidence**: high/medium/low
 **Fix**: [where and what to change — sdk/prompt/csharp/scoring]
 
