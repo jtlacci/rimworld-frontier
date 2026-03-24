@@ -69,31 +69,31 @@ If your investigation hits a dead end because the telemetry/observability doesn'
 
 ### Phase 4: Write Report
 
-Output your full investigation as markdown. Include your thinking process — which threads you pulled, what you checked, what dead ends you hit. The thinking IS the signal.
+Your output has two parts. Write the **findings** FIRST (the trainer reads only this), then the **full investigation** (indexed by QMD for history).
 
-Structure:
-```markdown
-# Audit: {scenario} — run {id} ({score}%)
+**Part 1 — Findings** (delimited by markers, trainer reads this):
+```
+=== AUDIT FINDINGS ===
+# Findings: {scenario} — run {id} ({score}%)
 
-## Thread: {metric_name} ({points_lost} pts lost)
-
-[Your investigation narrative — what you checked, what you found,
- layer by layer. Cite evidence: snapshot numbers, timestamps, grep results.]
-
-### Hypotheses
-- H1: [hypothesis] → **falsified/survived** — [evidence]
-- H2: [hypothesis] → **falsified/survived** — [evidence]
-- H3: [hypothesis] → **falsified/survived** — [evidence]
-
-**Root cause**: [the surviving hypothesis, one sentence]
+## {metric_name} ({points_lost} pts lost)
+**Root cause**: [one sentence]
 **Confidence**: high/medium/low
-(or **INCONCLUSIVE** if all falsified twice — with build request for what's missing)
+**Evidence**: [2-3 key data points that support this]
 **Fix**: [where and what to change — sdk/prompt/csharp/scoring]
 
-## Thread: {next metric} ...
+## {next metric} ...
 
 ## Recurring Issues
-[Cross-referenced from QMD — what's been seen before, what was tried]
+[One line per issue — what, how many runs, what was tried]
+
+## Build Requests
+[Observability gaps, if any]
+=== END AUDIT FINDINGS ===
+```
+
+**Part 2 — Full Investigation** (after findings):
+The full detective narrative — which threads you pulled, what you checked, hypotheses, falsification attempts, dead ends. This is for QMD indexing and future auditors, not the trainer.
 
 ## Build Requests
 [Observability gaps that blocked your investigation]

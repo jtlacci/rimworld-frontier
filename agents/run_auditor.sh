@@ -99,13 +99,25 @@ print('\n'.join(parts))
 " > "$RESULT_DIR/audit.md" 2>/dev/null || true
 rm -f "$AUDITOR_TMP"
 
+# Extract findings section for trainer (compact, no investigation details)
+python3 -c "
+text = open('$RESULT_DIR/audit.md').read()
+start_marker = '=== AUDIT FINDINGS ==='
+end_marker = '=== END AUDIT FINDINGS ==='
+if start_marker in text and end_marker in text:
+    findings = text[text.index(start_marker) + len(start_marker):text.index(end_marker)].strip()
+    with open('$RESULT_DIR/audit_findings.md', 'w') as f:
+        f.write(findings)
+    print(f'  Findings extracted to audit_findings.md')
+else:
+    # Fallback: trainer reads full audit
+    print('  WARNING: No AUDIT FINDINGS markers found — trainer will read full audit.md')
+" 2>/dev/null || true
+
 # Print summary
 SCORE=$(python3 -c "import json; print(f'{json.load(open(\"$RESULT_DIR/score.json\"))[\"pct\"]:.1f}')" 2>/dev/null || echo "?")
-THREADS=$(grep -c '^## Thread' "$RESULT_DIR/audit.md" 2>/dev/null || echo "0")
-BUILD_REQS=$(grep -c '^\- ' <(sed -n '/^## Build Requests/,/^## /p' "$RESULT_DIR/audit.md") 2>/dev/null || echo "0")
 echo "  Score: ${SCORE}%"
-echo "  Threads investigated: $THREADS"
-echo "  Build requests: $BUILD_REQS"
+grep -c '^## ' "$RESULT_DIR/audit_findings.md" 2>/dev/null | xargs -I{} echo "  Findings: {} sections" || true
 
 # Extract build requests to scenario-level file
 python3 -c "

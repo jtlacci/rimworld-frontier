@@ -47,8 +47,15 @@ log "  Diagnosis: $DIAGNOSIS_PATH"
 log "  Agent repo: $AGENT_REPO"
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Read the diagnosis content to pass as input
-DIAGNOSIS_CONTENT="$(cat "$DIAGNOSIS_PATH")"
+# Prefer audit_findings.md (compact) over full audit.md (saves tokens)
+FINDINGS_PATH="$(dirname "$DIAGNOSIS_PATH")/audit_findings.md"
+if [[ -f "$FINDINGS_PATH" ]]; then
+    DIAGNOSIS_CONTENT="$(cat "$FINDINGS_PATH")"
+    log "  Using compact findings: $FINDINGS_PATH"
+else
+    DIAGNOSIS_CONTENT="$(cat "$DIAGNOSIS_PATH")"
+    log "  Using full audit: $DIAGNOSIS_PATH"
+fi
 
 # Build system prompt from trainer agent instructions
 TRAINER_PROMPT="$(cat "$FRONTIER_DIR/AGENT_TRAINER.md")"
