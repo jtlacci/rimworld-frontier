@@ -19,7 +19,16 @@ Also read `scenario.json` for context (what the scenario is testing).
 
 ### Phase 2: Investigate Each Thread
 
-For each thread, peel back layers. Use targeted tools — never read a whole file when Grep can find what you need.
+**BEFORE deep-diving, check if this thread is already known.** Query QMD (`-c frontier-runs`) for this failure pattern. If prior audits have established the root cause:
+- State: "Known issue from run N: [root cause]. Checking if trainer fix was applied and whether it helped."
+- Check the trainer_changelog.json and AGENT_OVERSEER.md to see if the fix was implemented
+- Verify with a quick Grep whether the same pattern persists in THIS run's data
+- If the root cause is unchanged, report it as **KNOWN — still present** with one line of evidence. Don't re-trace the full chain.
+- If something CHANGED (new evidence, fix was applied but didn't help, or the pattern shifted), THEN investigate deeper.
+
+**Only do a full investigation on threads that are NEW or where prior fixes changed the picture.**
+
+For new/changed threads, peel back layers:
 
 **Layer 1 — What happened?**
 - Grep `score_timeline.jsonl` for the relevant field (e.g., `meals`, `buildings`, `mood_avg`)
@@ -30,11 +39,7 @@ For each thread, peel back layers. Use targeted tools — never read a whole fil
 - Grep `command_log.jsonl` for failed commands related to this thread
 - If spatial: Read `colony_map.txt`
 
-**Layer 3 — Is this recurring?**
-- Query QMD (`mcp__qmd__query`, collection `frontier-runs`): search for this failure pattern across past runs
-- Check: has the trainer tried to fix this before? Did it work?
-
-**Layer 4 — What's the game mechanic?**
+**Layer 3 — What's the game mechanic?**
 - Query QMD (`mcp__qmd__query`, collection `rimworld-wiki`): verify your assumptions about the mechanic
 - Don't guess how RimWorld works — look it up
 
@@ -76,11 +81,13 @@ Your output has two parts. Write the **findings** FIRST (the trainer reads only 
 === AUDIT FINDINGS ===
 # Findings: {scenario} — run {id} ({score}%)
 
-## {metric_name} ({points_lost} pts lost)
+## {metric_name} ({points_lost} pts lost) — NEW or KNOWN
+For KNOWN issues: one-line status update ("Known from run N. Trainer fix X applied. Still present / resolved / changed.")
+For NEW issues:
 **Root cause**: [one sentence]
 **Confidence**: high/medium/low
 **Evidence**: [2-3 key data points that support this]
-**Recommendation**: [general direction, not specific code — e.g. "berry harvesting must take priority over construction during food scarcity" not "set PlantCutting=1 in day1_setup()"]
+**Recommendation**: [general direction, not specific code]
 
 ## {next metric} ...
 
