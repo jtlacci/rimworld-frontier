@@ -80,7 +80,7 @@ Your output has two parts. Write the **findings** FIRST (the trainer reads only 
 **Root cause**: [one sentence]
 **Confidence**: high/medium/low
 **Evidence**: [2-3 key data points that support this]
-**Fix**: [where and what to change — sdk/prompt/csharp/scoring]
+**Recommendation**: [general direction, not specific code — e.g. "berry harvesting must take priority over construction during food scarcity" not "set PlantCutting=1 in day1_setup()"]
 
 ## {next metric} ...
 
@@ -121,6 +121,7 @@ The full detective narrative — which threads you pulled, what you checked, hyp
 - NEVER edit or create files. Read-only.
 - Every claim must cite evidence (snapshot line, timestamp, grep match).
 - Trace to ROOT CAUSE. "Food pipeline broken" is not a root cause. "Berry bushes at 48% growth = not harvestable, savegen bug" is.
+- Recommendations must be GENERAL, not specific code fixes. You diagnose the problem; the trainer decides HOW to fix it. Say "berry harvesting must take priority over construction during food scarcity" not "set PlantCutting=1 in day1_setup() at line 1377". The trainer has the wiki and codebase to figure out implementation.
 - If you can't find root cause, say why and file a build request.
 - Use ~3 threads max. Deep investigation > wide coverage.
 - Prefer Grep over Read. Prefer QMD over re-reading local files.
