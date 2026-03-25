@@ -246,11 +246,35 @@ CLEOF
 # Cleanup
 rm -f "$TMPFILE" "${TMPFILE}.err"
 
-# Commit trainer changes in AGENT repo (so they can be reviewed/reverted)
+# Commit ONLY AGENT_OVERSEER.md changes in AGENT repo
 cd "$AGENT_REPO"
-git add -A 2>/dev/null
-git commit -m "trainer: applied fixes from $(basename $(dirname $DIAGNOSIS_PATH))" -q 2>/dev/null || true
+git add AGENT_OVERSEER.md 2>/dev/null
+git commit -m "trainer: strategy update from $(basename $(dirname $DIAGNOSIS_PATH))" -q 2>/dev/null || true
 log "Changes committed in $AGENT_REPO. Review: git diff HEAD~1  Revert: git revert HEAD"
+
+# Extract build requests from trainer output and append to frontier build_requests.md
+python3 -c "
+import json, re
+try:
+    changelog = json.load(open('$RUN_DIR/trainer_changelog.json'))
+    reqs = changelog.get('build_requests', [])
+    if reqs:
+        existing = ''
+        try: existing = open('$FRONTIER_DIR/build_requests.md').read()
+        except: pass
+        existing_titles = set(re.findall(r'\*\*([^*]+)\*\*', existing))
+        added = 0
+        with open('$FRONTIER_DIR/build_requests.md', 'a') as f:
+            for req in reqs:
+                title = req.split('.')[0].split(':')[0].strip()[:50]
+                if title not in existing_titles:
+                    f.write(f'\n- **{title}**: {req}\n')
+                    added += 1
+        if added:
+            print(f'  {added} build request(s) added')
+except Exception as e:
+    pass
+" 2>/dev/null || true
 
 log "Summary saved to: $SUMMARY_PATH"
 
