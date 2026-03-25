@@ -19,14 +19,15 @@ Also read `scenario.json` for context (what the scenario is testing).
 
 ### Phase 2: Investigate Each Thread
 
-**BEFORE deep-diving, check if this thread is already known.** Query QMD (`-c frontier-runs`) for this failure pattern. If prior audits have established the root cause:
-- State: "Known issue from run N: [root cause]. Checking if trainer fix was applied and whether it helped."
-- Check the trainer_changelog.json and AGENT_OVERSEER.md to see if the fix was implemented
-- Verify with a quick Grep whether the same pattern persists in THIS run's data
-- If the root cause is unchanged, report it as **KNOWN — still present** with one line of evidence. Don't re-trace the full chain.
-- If something CHANGED (new evidence, fix was applied but didn't help, or the pattern shifted), THEN investigate deeper.
+**BEFORE investigating, classify each thread.** Query QMD (`-c frontier-runs`) for this failure pattern in prior audits. Count how many times it's been investigated before. Then decide:
 
-**Only do a full investigation on threads that are NEW or where prior fixes changed the picture.**
+**NEW thread** (0 prior investigations): Full deep-dive. This is where your tokens are best spent.
+
+**Known thread, 1-2 prior investigations**: Worth revisiting IF the trainer applied a fix — check whether the fix helped, hurt, or was ignored. Try a DIFFERENT falsification angle than prior audits used. There may be a deeper root cause the prior auditor missed.
+
+**Known thread, 3+ prior investigations**: Diminishing returns. Do NOT re-investigate unless you see specific new evidence in THIS run's data that contradicts the established root cause. Report as: "Known issue (investigated N times). Status: [still present / fix applied but ineffective / resolved]. New evidence: [yes/no]."
+
+**Spend your token budget wisely.** If you have 3 threads and one is new while two are known (3+ investigations each), spend 80% of your effort on the new thread. Known issues get a status check, not a re-trace.
 
 For new/changed threads, peel back layers:
 
