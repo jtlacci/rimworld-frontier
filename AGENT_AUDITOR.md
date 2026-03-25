@@ -104,7 +104,12 @@ The full detective narrative — which threads you pulled, what you checked, hyp
 
 ## Tools
 
-- **Grep**: Search `score_timeline.jsonl`, `overseer_conversation.txt`, `command_log.jsonl` for specific patterns. This is your primary tool.
+- **Grep**: Your primary tool. Search these files for specific patterns:
+  - `score_timeline.jsonl` — 1s snapshots: meals, raw_food, buildings, colonist jobs (format: `"job:target"`), mood, sub_cookable flag
+  - `command_log.jsonl` — every SDK command with args, timing, success/error
+  - `events.jsonl` — game-side events: job transitions (`"e":"job"`), item pickups (`"e":"carry"`), eating (`"e":"eat"`), with tick/hour/colonist/thing/position
+  - `tool_calls.jsonl` — overseer tool calls: what code it ran per turn (`"tool":"Bash","code":"r.day1_setup()..."`)
+  - `overseer_conversation.txt` — full overseer text output
 - **Read**: Only for `score.json`, `scenario.json`, and files a thread specifically needs.
 - **QMD** (`mcp__qmd__query`, `mcp__qmd__search`):
   - `-c frontier-runs`: Past audits, overseer conversations, trainer changelogs, scores

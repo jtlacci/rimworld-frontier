@@ -53,14 +53,18 @@ Start with:
 - $RESULT_DIR/score.json — triage, find top 3 point losses
 - $RESULT_DIR/scenario.json — understand what's being tested
 
-Then investigate each thread using Grep and QMD. Files available:
-- $RESULT_DIR/score_timeline.jsonl — 1s snapshots (use Grep, don't Read)
-- $RESULT_DIR/command_log.jsonl — every SDK call with timing (use Grep)
-- $RESULT_DIR/overseer_conversation.txt — full overseer output (use Grep)
-- $RESULT_DIR/colony_map.txt — ASCII map (Read only if spatial thread)
-- $RESULT_DIR/machine_report.json — SDK issues (Read only if relevant)
-- $RESULT_DIR/after.json — final state (Read only if relevant)
-- $AGENT_REPO/AGENT_OVERSEER.md — overseer instructions (Read only if investigating execution gap)
+Then investigate each thread using Grep and QMD. Files available (use Grep, don't Read):
+- $RESULT_DIR/score_timeline.jsonl — 1s snapshots: meals, raw_food, jobs (format: job:target), mood, sub_cookable
+- $RESULT_DIR/events.jsonl — game-tick events: job transitions, item pickups, eating (who ate what when)
+- $RESULT_DIR/command_log.jsonl — every SDK call with args and timing
+- $RESULT_DIR/tool_calls.jsonl — overseer tool calls: what code it ran per turn
+- $RESULT_DIR/overseer_conversation.txt — full overseer text output
+
+Read only if a thread specifically needs it:
+- $RESULT_DIR/colony_map.txt — ASCII map (spatial threads)
+- $RESULT_DIR/machine_report.json — SDK-reported issues
+- $RESULT_DIR/after.json — final colony state
+- $AGENT_REPO/AGENT_OVERSEER.md — overseer instructions (execution gap threads only)
 
 Write your full investigation as markdown — the thinking process IS the output."
 
