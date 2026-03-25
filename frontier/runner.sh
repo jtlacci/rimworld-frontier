@@ -427,8 +427,10 @@ exit_code = int(sys.argv[3])
 wall_duration_s = int(sys.argv[4])
 
 text_parts = []
+tool_calls = []
 result_data = {}
 num_turns = 0
+pending_tools = {}  # id -> {tool, input, start_ts}
 
 with open(tmpfile) as f:
     for line in f:
@@ -444,12 +446,43 @@ with open(tmpfile) as f:
             num_turns += 1
             msg = event.get("message", event)
             for block in msg.get("content", []):
-                if isinstance(block, dict) and block.get("type") == "text":
-                    text_parts.append(block["text"])
+                if isinstance(block, dict):
+                    if block.get("type") == "text":
+                        text_parts.append(block["text"])
+                    elif block.get("type") == "tool_use":
+                        tool_id = block.get("id", "")
+                        pending_tools[tool_id] = {
+                            "turn": num_turns,
+                            "tool": block.get("name", "?"),
+                            "input": block.get("input", {}),
+                        }
+        elif etype == "tool_result":
+            tool_id = event.get("tool_use_id", "")
+            if tool_id in pending_tools:
+                tc = pending_tools.pop(tool_id)
+                # Extract code from Bash input
+                code = ""
+                inp = tc["input"]
+                if isinstance(inp, dict):
+                    code = inp.get("command", inp.get("code", str(inp)[:500]))
+                elif isinstance(inp, str):
+                    code = inp[:500]
+                tool_calls.append({
+                    "turn": tc["turn"],
+                    "tool": tc["tool"],
+                    "code": code,
+                })
         elif etype == "result":
             result_data = event
             if event.get("result"):
                 text_parts.append(event["result"])
+
+# Write tool calls log
+if tool_calls:
+    with open(f"{result_dir}/tool_calls.jsonl", "w") as f:
+        for tc in tool_calls:
+            f.write(json.dumps(tc) + "\n")
+    print(f"Tool calls: {len(tool_calls)} logged")
 
 full_text = "\n".join(text_parts)
 with open(f"{result_dir}/overseer_conversation.txt", "w") as f:
