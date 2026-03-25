@@ -1,0 +1,79 @@
+{
+  "name": "feed_the_colony_0.5",
+  "map_size": 50,
+  "terrain": "Soil",
+  "mountains": "none",
+  "water": "none",
+  "trees": true,
+  "tree_density": 0.1,
+  "temperature": 20,
+  "keep_ruins": false,
+  "seed": 73,
+  "berry_bushes": 20,
+  "keep_wildlife": false,
+  "starting_packs": 0,
+  "wildlife_count": 1,
+  "starting_items": {
+    "ComponentSpacer": 0,
+    "Luciferium": 0
+  },
+  "completed_research": null,
+  "wildlife_species": [
+    "Hare"
+  ],
+  "wildlife_distribution": {
+    "Hare": 1
+  },
+  "scheduled_spawns": [
+    {
+      "game_hour": 36,
+      "species": "Hare",
+      "count": 2,
+      "manhunter": false
+    }
+  ],
+  "ruins": null,
+  "ponds": null,
+  "mountain_side": null,
+  "mountain_resources": null,
+  "grass": true,
+  "grass_density": 0.5,
+  "mission": "feed_the_colony",
+  "mission_description": "Feed 3 colonists for 3 days with zero survival packs. Only 1 Hare at start (~17 raw meat = 3 simple meals = 2.7 nutrition). Two more Hares spawn at game hour 36 (mid-day 2). All 3 hares combined yield ~51 raw meat = ~9 simple meals = 8.1 nutrition. That is NOT ENOUGH: 3 colonists need 14.4 nutrition over 3 days. The only path to survival is the 20 pre-grown berry bushes: 200 berries -> 40 simple meals if harvested and cooked. The overseer's instinct is to hunt the hare first. That instinct is a trap here. Berries must be harvested on day 1 -- they provide 4x more food than all the animals combined. This is the plant-cutting mechanic gate.",
+  "scoring": {
+    "meals_produced": {
+      "weight": 30,
+      "metric": "peak_meals",
+      "thresholds": [
+        1,
+        5,
+        10,
+        15
+      ]
+    },
+    "food_sustained": {
+      "weight": 30,
+      "metric": "pct_fed",
+      "need": "food",
+      "threshold": 0.25
+    },
+    "no_starvation": {
+      "weight": 20,
+      "metric": "no_alert",
+      "alert": "starvation"
+    },
+    "food_stockpile": {
+      "weight": 10,
+      "metric": "final_meals",
+      "thresholds": [
+        1,
+        5,
+        10
+      ]
+    },
+    "all_alive": {
+      "weight": 10,
+      "metric": "all_alive"
+    }
+  }
+}
