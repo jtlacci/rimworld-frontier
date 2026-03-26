@@ -244,22 +244,25 @@ phase_mark "smoke_test" "end"
 
 # ─── Phase 3: Load mission instructions if available ───
 MISSION_PROMPT=""
-# Check for scenario-specific mission file (SCENARIO_<NAME>.md)
-SCENARIO_UPPER=$(echo "$SCENARIO_NAME" | tr '[:lower:]' '[:upper:]')
-MISSION_FILE="$FRONTIER_DIR/SCENARIO_${SCENARIO_UPPER}.md"
-if [[ -f "$MISSION_FILE" ]]; then
-    MISSION_PROMPT="$(cat "$MISSION_FILE")"
-    log "Mission loaded: $MISSION_FILE"
-else
-    # Try exact name match
-    for f in "$FRONTIER_DIR"/SCENARIO_*.md; do
-        fname=$(basename "$f" .md | sed 's/SCENARIO_//' | tr '[:upper:]' '[:lower:]')
-        if [[ "$fname" == "$SCENARIO_NAME" ]]; then
-            MISSION_PROMPT="$(cat "$f")"
-            log "Mission loaded: $f"
-            break
-        fi
-    done
+# Use the "mission" field from scenario.json (e.g., "feed_the_colony") for file lookup
+# This handles versioned names like feed_the_colony_0.7 → SCENARIO_FEED_THE_COLONY.md
+MISSION_BASE=$(python3 -c "import json; print(json.load(open('$SCENARIO_JSON')).get('mission','') or '')" 2>/dev/null)
+MISSION_DESC=$(python3 -c "import json; print(json.load(open('$SCENARIO_JSON')).get('mission_description','') or '')" 2>/dev/null)
+if [[ -n "$MISSION_BASE" ]]; then
+    MISSION_UPPER=$(echo "$MISSION_BASE" | tr '[:lower:]' '[:upper:]')
+    MISSION_FILE="$FRONTIER_DIR/SCENARIO_${MISSION_UPPER}.md"
+    if [[ -f "$MISSION_FILE" ]]; then
+        MISSION_PROMPT="$(cat "$MISSION_FILE")"
+        log "Mission loaded: $MISSION_FILE"
+    fi
+fi
+# Inject mission_description from scenario.json (contains scenario-specific instructions)
+if [[ -n "$MISSION_DESC" ]]; then
+    MISSION_PROMPT="${MISSION_PROMPT:+$MISSION_PROMPT
+
+}## Scenario-Specific Instructions
+$MISSION_DESC"
+    log "Mission description injected from scenario.json"
 fi
 
 phase_mark "overseer" "start"
