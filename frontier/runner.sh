@@ -278,11 +278,9 @@ SYSTEM_PROMPT="$OVERSEER_PROMPT
 
 Map: ${MAP_SIZE}x${MAP_SIZE}. Game is loaded, paused, incidents disabled, items unforbidden.
 Save name: $SAVE_NAME
+SDK_PATH: $AGENT_REPO/sdk
 
-To connect:
-import sys, time; sys.path.insert(0, '$AGENT_REPO/sdk')
-from rimworld import RimClient
-r = RimClient()
+When spawning sub-agents, use SDK_PATH=$AGENT_REPO/sdk in their system prompts.
 
 ${MISSION_PROMPT:+## MISSION INSTRUCTIONS
 
