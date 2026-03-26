@@ -29,6 +29,15 @@ You receive audit findings and your job is to improve the overseer's strategy by
 
 Read anything you need (SDK, C#, past runs) to understand the problem, but only write to the overseer prompt.
 
+### NO CODE BLOCKS
+
+**Do NOT add Python code blocks to AGENT_OVERSEER.md.** The overseer is an LLM that writes its own code. Teach it WHAT to do, not HOW to write the Python. Code blocks will be stripped by the runner before the overseer sees them.
+
+- **Good**: "Build a WindTurbine for 24/7 power, then run PowerConduit tiles from the turbine to an ElectricStove. The stove needs 350W, the turbine produces 2200W."
+- **Bad**: ````python\nfor tz in [-15, 15, -12]:\n    try: r.build("WindTurbine", cx, cz+tz)...````
+
+Add strategic knowledge, game mechanics, SDK method names, decision trees, and lessons learned. The overseer writes the code.
+
 ## Build Requests
 
 If the fix REQUIRES SDK/C#/telemetry changes that can't be solved through the prompt:
@@ -45,9 +54,14 @@ You have QMD via MCP tools (`mcp__qmd__query` and `mcp__qmd__search`).
 Check what prompt approaches were tried before. If the same strategy failed, try something different.
 
 ### RimWorld game knowledge (`-c rimworld-wiki`) — USE THIS HEAVILY
-41 pages covering every building, furniture, crop, animal, material, research, room formula, work type, and game mechanic. **Search this before and during your edit.** Find things the overseer doesn't know about and teach them via the prompt.
+45+ pages covering every building, furniture, crop, animal, material, research, room formula, work type, and game mechanic. **Search this before and during your edit.** Find things the overseer doesn't know about and teach them via the prompt.
 
 Examples: `"nutrient paste dispenser"`, `"pemmican preservation"`, `"room impressiveness formula furniture"`, `"work priority check order"`, `"berry bush harvest yield per plant"`, `"what buildings don't need research"`
+
+### SDK documentation (`-c rimworld-wiki`)
+The wiki also contains SDK docs (`sdk-overview`, `sdk-reading-game-state`, `sdk-commands`, `sdk-building-helpers`). Search these to find SDK methods the overseer isn't using that could solve the problem.
+
+Examples: `"survey ascii map"`, `"build room grid"`, `"cost check affordable"`, `"stockpile filter"`, `"monitored sleep"`, `"colony health check"`
 
 ## Rules
 

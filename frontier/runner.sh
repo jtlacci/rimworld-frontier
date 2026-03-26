@@ -268,85 +268,21 @@ fi
 phase_mark "overseer" "start"
 log "Spawning overseer (${OVERSEER_TIMEOUT}s limit, map=${MAP_SIZE}x${MAP_SIZE})..."
 
-SYSTEM_PROMPT="# RimWorld Frontier Overseer — ${MAP_SIZE}x${MAP_SIZE} Map
+OVERSEER_PROMPT="$(cat "$AGENT_REPO/AGENT_OVERSEER.md")"
 
-You control a RimWorld colony via Python SDK on a SMALL ${MAP_SIZE}x${MAP_SIZE} map.
-Game is loaded, paused, incidents disabled, items unforbidden.
+SYSTEM_PROMPT="$OVERSEER_PROMPT
 
-## SDK Connection
-\`\`\`python
+---
+
+## Session Context
+
+Map: ${MAP_SIZE}x${MAP_SIZE}. Game is loaded, paused, incidents disabled, items unforbidden.
+Save name: $SAVE_NAME
+
+To connect:
 import sys, time; sys.path.insert(0, '$AGENT_REPO/sdk')
 from rimworld import RimClient
 r = RimClient()
-\`\`\`
-
-## Key SDK Methods
-- \`r.day1_setup()\` — full setup (roles, priorities, research, hunting, chopping). Returns dict with center_x, center_z, resources, hunter, cook, researcher.
-- \`r.setup_cooking(cx, cz)\` — campfire + butcher + stove
-- \`r.setup_dining(cx, cz)\` — table + chairs (BEFORE walls)
-- \`r.setup_zones(cx, cz)\` — stockpiles + grow zone
-- \`r.build_barracks(cx, cz, material='Steel')\` — 7x5 barracks with beds/furniture
-- \`r.build_storage_room(cx, cz)\` — 7x5 storage room (WoodLog walls)
-- \`r.setup_production(cx, cz, bx, bz)\` — research + tailoring benches
-- \`r.setup_recreation(cx, cz)\` — horseshoes
-- \`r.add_cooking_bills()\` — add/refresh cooking bills
-- \`r.colony_health_check()\` — food/shelter/wood/mood/alerts status
-- \`r.pause()\`, \`r.unpause()\` (auto speed 4 ultrafast + dismiss dialogs)
-- \`r.save(name=)\`, \`r.chop(cx,cz,radius=)\`
-
-## CRITICAL TIMING — Speed 4 Ultrafast
-r.unpause() uses speed 4 (ultrafast, skips rendering). Game runs VERY FAST.
-- Phase 1 sleep: **20s** (setup builds complete fast at speed 4)
-- Phase 2 sleep: **40s** (barracks construction)
-- Reactive loop sleep: **30-60s** per iteration (2-4 iterations)
-- Total wall clock budget: **380s** (save 20s buffer for report)
-- At speed 4 on ${MAP_SIZE}x${MAP_SIZE}, 3 in-game days pass in ~120-180s of real time
-
-## Execution Plan (6-8 tool calls max)
-
-**Tool 1: Setup + Cooking + Zones**
-\`\`\`python
-import time; START_TIME = time.time()
-setup = r.day1_setup()
-cx, cz = setup['center_x'], setup['center_z']
-cooking = r.setup_cooking(cx, cz)
-dining = r.setup_dining(cx, cz)
-zones = r.setup_zones(cx, cz)
-try: r.chop(cx, cz, radius=25)
-except: pass
-r.unpause(); time.sleep(20); r.pause()
-bills = r.add_cooking_bills()
-\`\`\`
-
-**Tool 2: Build Structures**
-\`\`\`python
-barracks = r.build_barracks(cx, cz, material='Steel')
-bx, bz = barracks['x1'], barracks['z1']
-prod = r.setup_production(cx, cz, bx, bz)
-storage = r.build_storage_room(cx, cz)
-rec = r.setup_recreation(cx, cz)
-r.unpause(); time.sleep(40); r.pause()
-r.add_cooking_bills()
-\`\`\`
-
-**Tools 3-6: Reactive Loop** (repeat until game_day >= 4 or wall > 380s)
-\`\`\`python
-status = r.colony_health_check()
-# Handle food/wood/medical crises per priority
-r.unpause(); time.sleep(45); r.pause()
-\`\`\`
-
-**Tool 7-8: Save + Report**
-\`\`\`python
-r.save(name='$SAVE_NAME'); r.close()
-\`\`\`
-
-## Rules
-- Wrap ALL build/zone calls in try/except — skip failures, never retry
-- Do NOT spawn sub-agents or write files
-- \`r.build(blueprint, x, z, stuff=)\` — use positional args, NOT y=
-- HorseshoesPin (with 's'), TorchLamp (not StandingLamp)
-- \`colonists()\` returns {'colonists': [...]}, not flat list
 
 ${MISSION_PROMPT:+## MISSION INSTRUCTIONS
 
