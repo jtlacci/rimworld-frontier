@@ -59,39 +59,12 @@ if [[ -n "$RESULT_DIR" && -d "$RESULT_DIR" ]]; then
         SCORE=$(python3 -c "import json; d=json.load(open('$RESULT_DIR/score.json')); print(f'Score: {d[\"pct\"]}%'); [print(f'  {m}: {i[\"score\"]:.2f} x{i[\"weight\"]} = {i[\"weighted\"]:.1f}  {i.get(\"detail\",\"\")[:80]}') for m,i in d['breakdown'].items() if not m.startswith('_')]" 2>/dev/null)
         RUN_CONTEXT+="$SCORE"$'\n\n'
     fi
-    # Timeline summary
-    if [[ -f "$RESULT_DIR/score_timeline.jsonl" ]]; then
-        TIMELINE=$(python3 -c "
-import json
-entries = [json.loads(l) for l in open('$RESULT_DIR/score_timeline.jsonl') if l.strip()]
-meals = [e.get('meals',0) for e in entries]
-wild = [e.get('wild_animals',-1) for e in entries]
-raw = [e.get('food_pipeline',{}).get('raw_food',0) for e in entries]
-print(f'meals over time: {meals}')
-print(f'wild animals: {wild}')
-print(f'raw food: {raw}')
-" 2>/dev/null)
-        RUN_CONTEXT+="Timeline:"$'\n'"$TIMELINE"$'\n\n'
-    fi
-    # Audit if exists
-    if [[ -f "$RESULT_DIR/audit.json" ]]; then
-        AUDIT=$(python3 -c "
-import json
-d = json.load(open('$RESULT_DIR/audit.json'))
-for chain in d.get('failure_chains', [])[:5]:
-    print(f'  [{chain.get(\"category\",\"?\")}] {chain.get(\"metric\",\"?\")}: {chain.get(\"root_cause\",\"\")[:100]}')
-" 2>/dev/null)
-        RUN_CONTEXT+="Failure chains:"$'\n'"$AUDIT"$'\n\n'
-    fi
-    # Timeline issues
-    if [[ -f "$RESULT_DIR/timeline_analysis.json" ]]; then
-        ISSUES=$(python3 -c "
-import json
-d = json.load(open('$RESULT_DIR/timeline_analysis.json'))
-for issue in d.get('issues', [])[:5]:
-    print(f'  {issue}')
-" 2>/dev/null)
-        RUN_CONTEXT+="Timeline issues:"$'\n'"$ISSUES"$'\n\n'
+    # Audit findings (compact root causes — the auditor's conclusions)
+    if [[ -f "$RESULT_DIR/audit_findings.md" ]]; then
+        RUN_CONTEXT+="AUDIT FINDINGS:"$'\n'"$(cat "$RESULT_DIR/audit_findings.md")"$'\n\n'
+    elif [[ -f "$RESULT_DIR/audit.md" ]]; then
+        # Fallback: extract just the findings section
+        RUN_CONTEXT+="AUDIT FINDINGS:"$'\n'"$(sed -n '/^# Findings/,/^# [^F]/p' "$RESULT_DIR/audit.md" | head -60)"$'\n\n'
     fi
 fi
 
@@ -137,10 +110,10 @@ $MISSION_RUBRIC
 }RUN RESULTS:
 $RUN_CONTEXT
 INSTRUCTIONS:
-1. Write the scenario JSON to $SCENARIOS_DIR/ IMMEDIATELY — do not research first.
-2. Print your CHALLENGER SUMMARY with feasibility math.
-3. Only use WebSearch AFTER writing if you need to verify a specific number.
-4. Do NOT use the Agent tool. Do NOT read project files. You have everything above." \
+1. Use QMD to search past runs and game mechanics BEFORE designing.
+2. Write the scenario JSON to $SCENARIOS_DIR/.
+3. Print your CHALLENGER SUMMARY with feasibility math.
+4. Use WebSearch only for edge cases not in the wiki." \
     > >(tee -a $FRONTIER_DIR/frontier/logs/agent_live.jsonl > "$TMPFILE") 2>> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl" &
 CHALLENGER_PID=$!
 
