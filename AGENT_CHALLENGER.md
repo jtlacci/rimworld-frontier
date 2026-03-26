@@ -101,10 +101,19 @@ SCENARIO: <name> -> frontier/scenarios/<name>.json
 
 You have QMD via MCP tools (`mcp__qmd__query` and `mcp__qmd__search`), plus WebSearch and WebFetch. **Prefer QMD over web search** — it's faster and curated for this project.
 
-### RimWorld game knowledge (`-c rimworld-wiki`)
-41 pages of verified mechanics. Use for feasibility checks — nutrition math, temperature thresholds, animal stats, build requirements. Don't design scenarios around unverified assumptions.
+### RimWorld game knowledge (`-c rimworld-wiki`) — USE THIS TO DESIGN
+45+ pages of verified mechanics. Use for TWO purposes:
 
-Examples: `"animal meat yield hunting"`, `"hypothermia cold survival"`, `"food pipeline nutrition math"`, `"mood thresholds mental break"`
+1. **Feasibility checks**: Verify your calorie math, temperature thresholds, material costs. Don't design around unverified assumptions.
+2. **Find mechanics to test**: Search the wiki for game systems the overseer hasn't encountered yet. Design scenarios that REQUIRE these mechanics to succeed:
+   - `"what crops grow in cold biomes"` → scenario needs cold-weather farming
+   - `"nutrient paste dispenser requirements"` → scenario where cooking skill is unavailable
+   - `"room temperature heating"` → scenario where passive cooler/heater knowledge is required
+   - `"fishing"` → scenario on water-heavy maps where fishing is the primary food source
+   - `"stonecutting"` → scenario where only stone is available for building
+   - `"power grid batteries solar"` → scenario requiring electricity for survival
+
+The best scenarios are designed around a specific wiki page the overseer hasn't learned yet.
 
 ### Past runs, auditor findings, and trainer history (`-c frontier-runs`)
 Search ALL past artifacts: **auditor failure chains** (what broke and why), **trainer changelogs** (what was fixed), **overseer conversations** (what the agent actually did), score breakdowns. Use this to:
