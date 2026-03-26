@@ -161,15 +161,23 @@ Scenarios are classified by performance:
 
 ## Workflow
 
+### New Scenario Design
+```
+1. CHALLENGER:   ./agents/run_challenger.sh <prev_scenario.json> <result_dir>
+2. TEST RUN:     ./frontier/runner.sh <new_scenario.json> 1
+3. AUDITOR:      ./agents/run_auditor.sh <result_dir>
+4. CALIBRATE:    If TOO_EASY (>=85%) or IMPOSSIBLE (<50%) → back to CHALLENGER
+                 If FRONTIER (50-85%) → proceed to training loops
+```
+
+### Training Loop (on a calibrated FRONTIER scenario)
 ```
 1. RUN:          ./frontier/runner.sh <scenario.json> <run_id>
-2. REVIEW:       Read score, timeline issues, charts, food pipeline diagnostics
-3. DIAGNOSE:     ./agents/run_auditor.sh <result_dir>
-4. FIX:          ./agents/run_trainer.sh <audit.json>  (commits to agent repo)
-5. VERIFY:       Re-run same scenario to validate fixes
-6. REVERT:       cd $AGENT_REPO && git revert HEAD  (if score regressed)
-7. STRESS TEST:  ./agents/run_challenger.sh <scenario.json>
-8. REPEAT
+2. AUDITOR:      ./agents/run_auditor.sh <result_dir>
+3. TRAINER:      ./agents/run_trainer.sh <audit.md>  (edits AGENT_OVERSEER.md only)
+4. VERIFY:       Re-run same scenario — did score improve?
+5. REVERT:       cd $AGENT_REPO && git revert HEAD  (if score regressed >5pts)
+6. REPEAT until MASTERED (85-95%) → move to next scenario
 ```
 
 ### Trainer Rollback Policy
