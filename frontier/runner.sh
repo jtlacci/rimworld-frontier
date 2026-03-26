@@ -24,7 +24,7 @@ SAVE_NAME="Frontier-${SCENARIO_NAME}"
 MAP_SIZE=$(python3 -c "import json; print(json.load(open('$SCENARIO_JSON')).get('map_size', 50))")
 
 OVERSEER_MODEL="sonnet"
-OVERSEER_TIMEOUT=450  # 7.5 min hard limit for frontier runs
+OVERSEER_TIMEOUT=1350  # 22.5 min hard limit for frontier runs
 
 RESULT_DIR="$FRONTIER_DIR/frontier/results/${SCENARIO_NAME}/run_$(printf '%03d' $RUN_ID)"
 mkdir -p "$RESULT_DIR"
