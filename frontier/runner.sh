@@ -25,6 +25,7 @@ MAP_SIZE=$(python3 -c "import json; print(json.load(open('$SCENARIO_JSON')).get(
 
 OVERSEER_MODEL="sonnet"
 OVERSEER_TIMEOUT=1350  # 22.5 min hard limit for frontier runs
+GAME_DAY_LIMIT=3       # auto-pause game at this day
 
 RESULT_DIR="$FRONTIER_DIR/frontier/results/${SCENARIO_NAME}/run_$(printf '%03d' $RUN_ID)"
 mkdir -p "$RESULT_DIR"
@@ -322,7 +323,7 @@ OVERSEER_PID=$!
 
 # Wait with timeout + game day limit
 ELAPSED=0
-GAME_DAY_LIMIT=3  # kill overseer if game reaches this day
+# GAME_DAY_LIMIT defined at top of script
 while kill -0 "$OVERSEER_PID" 2>/dev/null; do
     sleep 5
     ELAPSED=$((ELAPSED + 5))
