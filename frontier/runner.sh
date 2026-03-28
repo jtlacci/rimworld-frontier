@@ -521,11 +521,7 @@ PYEOF
 # overseer_raw.jsonl removed — conversation.txt now includes tool calls
 rm -f "$TMPFILE" "${TMPFILE}.err"
 
-# ─── Phase 3a: Extract structured observations ───
-python3 << 'PYEOF' - "$RESULT_DIR"
 # machine_report.json removed — unreliable overseer self-reports; events/timeline have ground truth
-echo ""
-PYEOF
 
 # ─── Phase 4: After snapshot + scoring ───
 phase_mark "scoring" "start"
