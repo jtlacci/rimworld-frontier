@@ -238,7 +238,7 @@ PYEOF
 log "Starting score monitor (20s intervals)..."
 # P0 fix: truncate stale timeline data to prevent merging with previous captures
 > "$RESULT_DIR/score_timeline.jsonl"
-AGENT_REPO="$AGENT_REPO" python3 "$FRONTIER_DIR/agents/score_monitor.py" "$RESULT_DIR" 1 &
+AGENT_REPO="$AGENT_REPO" python3 "$FRONTIER_DIR/agents/score_monitor.py" "$RESULT_DIR" 5 &
 MONITOR_PID=$!
 phase_mark "smoke_test" "end"
 
@@ -490,7 +490,7 @@ with open(f"{result_dir}/overseer_usage.json", "w") as f:
 print(f"Overseer: {input_tok + output_tok} tokens, \${result_data.get('total_cost_usd', 0):.4f}, {num_turns} turns")
 PYEOF
 
-cp "$TMPFILE" "$RESULT_DIR/overseer_raw.jsonl" 2>/dev/null || true
+# overseer_raw.jsonl removed — conversation.txt now includes tool calls
 rm -f "$TMPFILE" "${TMPFILE}.err"
 
 # ─── Phase 3a: Extract structured observations ───

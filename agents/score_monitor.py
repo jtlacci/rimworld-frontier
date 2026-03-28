@@ -60,6 +60,10 @@ last_game_hour = None
 consecutive_frozen = 0
 MAX_FROZEN = 2  # Stop recording after 2 identical snapshots (game paused/saved)
 
+# Cooking throughput tracking (state between snapshots)
+prev_total_meals = None
+prev_game_hour = None
+
 while True:
     elapsed = time.time() - start_time
     try:
@@ -297,12 +301,14 @@ while True:
 
         # Wild animal tracking — food competition signal
         wild_animal_count = 0
+        hunt_designated_count = 0
         try:
             animals_data = r.send("read_animals")  # bypass cache for fresh data
             if isinstance(animals_data, dict):
                 all_animals = animals_data.get("animals", [])
                 wild_animal_count = sum(1 for a in all_animals
                                         if isinstance(a, dict) and not a.get("tame", False))
+                hunt_designated_count = animals_data.get("hunt_designated_count", 0)
             elif isinstance(animals_data, list):
                 wild_animal_count = len(animals_data)
         except Exception as e:
@@ -346,6 +352,54 @@ while True:
             "food_in_stockpile": total_raw_food + total_meals,
         }
 
+        # Cooking throughput tracking
+        cooking = {}
+        cur_game_hour = after.get("weather", {}).get("hour", 0) if isinstance(after, dict) else 0
+        meals_delta = 0
+        if prev_total_meals is not None:
+            meals_delta = max(0, total_meals - prev_total_meals)
+        hours_delta = 0
+        if prev_game_hour is not None and cur_game_hour > prev_game_hour:
+            hours_delta = cur_game_hour - prev_game_hour
+        meals_per_hour = round(meals_delta / hours_delta, 2) if hours_delta > 0.1 else 0
+
+        # Detect cook identity and idle reason
+        cook_name = None
+        cook_job = "unknown"
+        cook_idle_reason = None
+        for c_name, c_jobs in colonist_jobs.items():
+            # Find colonist with Cooking=1 priority
+            wp_data = after.get("work_priorities", {})
+            if isinstance(wp_data, dict):
+                prios = wp_data.get(c_name, {})
+                if isinstance(prios, dict) and prios.get("Cooking", 0) == 1:
+                    cook_name = c_name
+                    cook_job = c_jobs
+                    break
+        if cook_name and cook_job:
+            job_str = str(cook_job).lower()
+            if "dobill" in job_str or "cook" in job_str:
+                cook_idle_reason = None  # actively cooking
+            elif "idle" in job_str or "wait" in job_str or "wander" in job_str:
+                if not has_bills:
+                    cook_idle_reason = "no_bills"
+                elif total_raw_food == 0:
+                    cook_idle_reason = "no_ingredients"
+                else:
+                    cook_idle_reason = "idle"
+            else:
+                cook_idle_reason = "other_work"
+
+        cooking = {
+            "meals_delta": meals_delta,
+            "meals_per_hour": meals_per_hour,
+            "cook_name": cook_name,
+            "cook_job": cook_job if cook_name else None,
+            "cook_idle_reason": cook_idle_reason,
+        }
+        prev_total_meals = total_meals
+        prev_game_hour = cur_game_hour
+
         # Wealth tracking
         colony_stats = after.get("colony_stats", {})
         wealth = {
@@ -354,10 +408,9 @@ while True:
             "items": round(colony_stats.get("wealth_items", 0), 0),
         }
 
+        # Core fields (always included — small, critical for auditor grep)
         entry = {
             "elapsed_s": int(elapsed),
-            "total": total,
-            "max": max_pts,
             "pct": round(total / max_pts * 100, 1),
             "day": weather.get("dayOfYear", 0),
             "hour": round(weather.get("hour", 0), 1),
@@ -367,26 +420,38 @@ while True:
             "packs": resources.get("MealSurvivalPack", 0),
             "wood": resources.get("WoodLog", 0),
             "steel": resources.get("Steel", 0),
+            "buildings": len(building_list),
+            "blueprints_pending": bp_count,
+            "wild_animals": wild_animal_count,
+            "hunt_designated": hunt_designated_count,
+            "jobs": colonist_jobs,
+            "food_pipeline": food_pipeline,
+            "cooking": cooking,
+            "combat": {"active": combat_active, "fleeing": combat_fleeing, "downed": combat_downed},
+            "alerts": alert_labels,
+        }
+        # Heavy fields — only include when changed from last snapshot
+        heavy_fields = {
             "resources": {k: v for k, v in resources.items() if isinstance(v, (int, float))},
             "colonist_needs": colonist_needs,
             "need_buckets": need_buckets,
-            "buildings": len(building_list),
             "building_defs": building_defs,
-            "blueprints_pending": bp_count,
             "rooms": room_summary,
             "zones": zone_summary,
-            "jobs": colonist_jobs,
             "mood_debuffs": mood_debuffs,
             "mood_buffs": mood_buffs,
             "mood_categories": mood_categories,
-            "wild_animals": wild_animal_count,
-            "combat": {"active": combat_active, "fleeing": combat_fleeing, "downed": combat_downed},
-            "food_pipeline": food_pipeline,
             "wealth": wealth,
-            "alerts": alert_labels,
             "breakdown": {k: round(v["score"], 2) for k, v in breakdown.items()
                           if not k.startswith("_")},
         }
+        if not hasattr(sys.modules[__name__], '_prev_heavy'):
+            sys.modules[__name__]._prev_heavy = {}
+        prev_heavy = sys.modules[__name__]._prev_heavy
+        for k, v in heavy_fields.items():
+            if str(v) != str(prev_heavy.get(k)):
+                entry[k] = v
+                prev_heavy[k] = v
 
         # Telemetry health check — flag broken fields LOUDLY + log to file
         broken = []
