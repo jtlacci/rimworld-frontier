@@ -344,6 +344,34 @@ if [[ $OVERSEER_EXIT -ne 124 ]]; then
     wait "$OVERSEER_PID" || OVERSEER_EXIT=$?
 fi
 
+# Copy sub-agent logs to result directory
+if [[ -d /tmp/overseer_subagents ]]; then
+    mkdir -p "$RESULT_DIR/subagents"
+    cp /tmp/overseer_subagents/*.jsonl "$RESULT_DIR/subagents/" 2>/dev/null || true
+    # Extract text from each sub-agent log for QMD indexing
+    for f in "$RESULT_DIR/subagents/"*.jsonl; do
+        [ -f "$f" ] || continue
+        python3 -c "
+import json, sys
+parts = []
+for line in open('$f'):
+    try:
+        e = json.loads(line.strip())
+        if e.get('type') == 'result' and e.get('result'): parts.append(e['result'])
+        elif e.get('type') == 'assistant':
+            for b in e.get('message',{}).get('content',[]):
+                if isinstance(b,dict) and b.get('type')=='text': parts.append(b['text'])
+        elif e.get('type') == 'tool_result':
+            c = e.get('content','')
+            if isinstance(c, str) and len(c) < 2000: parts.append(f'[tool_result] {c}')
+    except: pass
+print('\n'.join(parts))
+" > "${f%.jsonl}.md" 2>/dev/null || true
+    done
+    rm -rf /tmp/overseer_subagents
+    log "Sub-agent logs saved to $RESULT_DIR/subagents/"
+fi
+
 END_TS=$(date +%s)
 DURATION=$((END_TS - START_TS))
 

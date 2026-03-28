@@ -64,6 +64,7 @@ Read only if a thread specifically needs it:
 - $RESULT_DIR/colony_map.txt — ASCII map (spatial threads)
 - $RESULT_DIR/machine_report.json — SDK-reported issues
 - $RESULT_DIR/after.json — final colony state
+- $RESULT_DIR/subagents/*.md — sub-agent logs (reader/executor full reasoning + tool outputs). Grep these to see WHY a sub-agent made specific decisions or failed.
 - $AGENT_REPO/AGENT_OVERSEER.md — overseer instructions (check if trainer changes were followed)
 - $RESULT_DIR/trainer_changelog.json — what the trainer changed last run (did it help or hurt?)
 - $RESULT_DIR/trainer_summary.txt — trainer's reasoning for its changes
