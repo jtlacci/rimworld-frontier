@@ -321,7 +321,7 @@ OVERSEER_PID=$!
 
 # Wait with timeout + game day limit
 ELAPSED=0
-GAME_DAY_LIMIT=5  # kill overseer if game reaches this day
+GAME_DAY_LIMIT=3  # kill overseer if game reaches this day
 while kill -0 "$OVERSEER_PID" 2>/dev/null; do
     sleep 5
     ELAPSED=$((ELAPSED + 5))
