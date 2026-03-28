@@ -347,14 +347,13 @@ fi
 # Copy sub-agent logs to result directory
 if [[ -d /tmp/overseer_subagents ]]; then
     mkdir -p "$RESULT_DIR/subagents"
-    cp /tmp/overseer_subagents/*.jsonl "$RESULT_DIR/subagents/" 2>/dev/null || true
-    # Extract text from each sub-agent log for QMD indexing
-    for f in "$RESULT_DIR/subagents/"*.jsonl; do
+    for f in /tmp/overseer_subagents/*.jsonl; do
         [ -f "$f" ] || continue
+        base=$(basename "$f" .jsonl)
         python3 -c "
 import json, sys
 parts = []
-for line in open('$f'):
+for line in open(sys.argv[1]):
     try:
         e = json.loads(line.strip())
         if e.get('type') == 'result' and e.get('result'): parts.append(e['result'])
@@ -366,7 +365,7 @@ for line in open('$f'):
             if isinstance(c, str) and len(c) < 2000: parts.append(f'[tool_result] {c}')
     except: pass
 print('\n'.join(parts))
-" > "${f%.jsonl}.md" 2>/dev/null || true
+" "$f" > "$RESULT_DIR/subagents/${base}.md" 2>/dev/null || true
     done
     rm -rf /tmp/overseer_subagents
     log "Sub-agent logs saved to $RESULT_DIR/subagents/"
