@@ -415,16 +415,32 @@ with open(tmpfile) as f:
                         text_parts.append(block["text"])
                     elif block.get("type") == "tool_use":
                         tool_id = block.get("id", "")
+                        inp = block.get("input", {})
+                        tool_name = block.get("name", "?")
                         pending_tools[tool_id] = {
                             "turn": num_turns,
-                            "tool": block.get("name", "?"),
-                            "input": block.get("input", {}),
+                            "tool": tool_name,
+                            "input": inp,
                         }
+                        # Include tool call in conversation text
+                        code = ""
+                        if isinstance(inp, dict):
+                            code = inp.get("command", inp.get("code", str(inp)[:1000]))
+                        elif isinstance(inp, str):
+                            code = inp[:1000]
+                        text_parts.append(f"\n[TOOL: {tool_name}]\n{code}\n")
         elif etype == "tool_result":
             tool_id = event.get("tool_use_id", "")
+            # Include tool result in conversation text
+            result_content = event.get("content", "")
+            if isinstance(result_content, str) and len(result_content) < 3000:
+                text_parts.append(f"[RESULT]\n{result_content}\n")
+            elif isinstance(result_content, list):
+                for item in result_content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(f"[RESULT]\n{item['text'][:3000]}\n")
             if tool_id in pending_tools:
                 tc = pending_tools.pop(tool_id)
-                # Extract code from Bash input
                 code = ""
                 inp = tc["input"]
                 if isinstance(inp, dict):
