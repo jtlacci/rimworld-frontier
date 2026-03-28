@@ -270,6 +270,17 @@ def summarize(result_dir):
                 lines.append(f"- `{fl[:200]}`")
             lines.append("")
 
+    # --- Sub-agent summary (if sub-agents were used) ---
+    subagent_dir = os.path.join(result_dir, "subagents")
+    if os.path.isdir(subagent_dir):
+        md_files = sorted(f for f in os.listdir(subagent_dir) if f.endswith(".md"))
+        if md_files:
+            lines.append(f"## Sub-Agents ({len(md_files)} spawned)\n")
+            for md_file in md_files:
+                agent_type = "reader" if "reader" in md_file else "executor" if "executor" in md_file else "agent"
+                lines.append(f"- **{md_file}** ({agent_type})")
+            lines.append("")
+
     # --- Error (if run crashed) ---
     error = load_json(os.path.join(result_dir, "error.json"))
     if error:

@@ -495,27 +495,8 @@ rm -f "$TMPFILE" "${TMPFILE}.err"
 
 # ─── Phase 3a: Extract structured observations ───
 python3 << 'PYEOF' - "$RESULT_DIR"
-import sys, json, re
-result_dir = sys.argv[1]
-try:
-    with open(f"{result_dir}/overseer_conversation.txt") as f:
-        text = f.read()
-    match = re.search(r'STRUCTURED_OBSERVATIONS:\s*\n(.*?)(?:\n\S|\Z)', text, re.DOTALL)
-    if match:
-        obs_text = match.group(1).strip()
-        obs = {"raw": obs_text}
-        for line in obs_text.split('\n'):
-            line = line.strip()
-            if ':' in line and not line.startswith('-'):
-                key, _, val = line.partition(':')
-                obs[key.strip()] = val.strip()
-        with open(f"{result_dir}/machine_report.json", "w") as f:
-            json.dump(obs, f, indent=2)
-        print(f"Machine report saved ({len(obs)} fields)")
-    else:
-        print("No STRUCTURED_OBSERVATIONS found")
-except Exception as e:
-    print(f"Machine report extraction failed: {e}")
+# machine_report.json removed — unreliable overseer self-reports; events/timeline have ground truth
+echo ""
 PYEOF
 
 # ─── Phase 4: After snapshot + scoring ───
@@ -579,10 +560,7 @@ print(f"Scenario: {config.name} | Difficulty: {config.overall_difficulty():.2f} 
 if score_data.get("adjustments"):
     print(f"Weight adjustments: {score_data['adjustments']}")
 
-# Diff summary
-diff = compare_snapshots(before, after)
-with open(f"{result_dir}/diff.txt", "w") as f:
-    f.write(diff)
+# diff.txt removed — derivable from before.json + after.json
 
 r.close()
 PYEOF
