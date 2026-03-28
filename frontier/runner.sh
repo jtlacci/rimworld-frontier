@@ -113,6 +113,7 @@ r.pause()
 r.disable_incidents()
 r.unforbid_all()
 r.set_event_log("$RESULT_DIR/events.jsonl")
+r.send("set_day_limit", day=$GAME_DAY_LIMIT)
 r.close()
 PYEOF
     then
