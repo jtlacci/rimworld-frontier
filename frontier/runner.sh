@@ -343,7 +343,7 @@ except: print(0)
             kill "$OVERSEER_PID" 2>/dev/null; sleep 2
             kill -9 "$OVERSEER_PID" 2>/dev/null || true
             pkill -f "claude -p" 2>/dev/null || true
-            OVERSEER_EXIT=0
+            OVERSEER_EXIT=124
             python3 -c "
 import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
 from rimworld import RimClient
