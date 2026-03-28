@@ -319,11 +319,39 @@ STRUCTURED_OBSERVATIONS:
     > >(tee -a "$LIVE_LOG" > "$TMPFILE") 2>> "$LIVE_LOG" &
 OVERSEER_PID=$!
 
-# Wait with timeout
+# Wait with timeout + game day limit
 ELAPSED=0
+GAME_DAY_LIMIT=5  # kill overseer if game reaches this day
 while kill -0 "$OVERSEER_PID" 2>/dev/null; do
     sleep 5
     ELAPSED=$((ELAPSED + 5))
+
+    # Check game day every 30s
+    if [[ $((ELAPSED % 30)) -eq 0 ]]; then
+        GAME_DAY=$(python3 -c "
+import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
+from rimworld import RimClient
+try:
+    r = RimClient()
+    w = r.weather()
+    print(w.get('dayOfYear', 0))
+    r.close()
+except: print(0)
+" 2>/dev/null || echo 0)
+        if [[ "$GAME_DAY" -ge "$GAME_DAY_LIMIT" ]]; then
+            log "Game day $GAME_DAY >= limit $GAME_DAY_LIMIT — stopping overseer"
+            kill "$OVERSEER_PID" 2>/dev/null; sleep 2
+            kill -9 "$OVERSEER_PID" 2>/dev/null || true
+            pkill -f "claude -p" 2>/dev/null || true
+            OVERSEER_EXIT=0
+            python3 -c "
+import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
+from rimworld import RimClient
+r = RimClient(); r.pause(); r.save(name='$SAVE_NAME'); r.close()
+" 2>/dev/null || true
+            break
+        fi
+    fi
 
     if [[ $ELAPSED -ge $OVERSEER_TIMEOUT ]]; then
         log "WARNING: Overseer hit ${OVERSEER_TIMEOUT}s timeout — killing"
