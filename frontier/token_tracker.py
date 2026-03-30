@@ -1,67 +1,94 @@
 #!/usr/bin/env python3
-"""Track token usage and context efficiency across runs.
+"""Track token usage per agent across all runs.
 
-Reads overseer_usage.json, audit.md size, trainer output from each run
-and appends to a cumulative token_usage.jsonl at the frontier root.
+Records: overseer, auditor, trainer, challenger — each as separate entries.
+Appends to token_usage.jsonl at frontier root.
 
-Usage: python3 frontier/token_tracker.py <result_dir>
-       python3 frontier/token_tracker.py --report  # print summary
+Usage:
+  python3 frontier/token_tracker.py overseer <result_dir>
+  python3 frontier/token_tracker.py auditor <result_dir>
+  python3 frontier/token_tracker.py trainer <result_dir>
+  python3 frontier/token_tracker.py challenger <result_dir>
+  python3 frontier/token_tracker.py --report
 """
 import json, os, sys
 
 TRACKER_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "token_usage.jsonl")
 
 
-def track_run(result_dir):
-    entry = {"run_dir": result_dir}
-
-    # Overseer tokens
+def track_overseer(result_dir):
     usage_path = os.path.join(result_dir, "overseer_usage.json")
-    if os.path.exists(usage_path):
-        u = json.load(open(usage_path))
-        entry["overseer"] = {
-            "input_tokens": u.get("input_tokens", 0),
-            "output_tokens": u.get("output_tokens", 0),
-            "total_tokens": u.get("input_tokens", 0) + u.get("output_tokens", 0),
-            "cost_usd": u.get("total_cost_usd", 0),
-            "turns": u.get("num_turns", 0),
-            "duration_s": u.get("duration_ms", 0) / 1000,
-        }
-
-    # Score
+    if not os.path.exists(usage_path): return
+    u = json.load(open(usage_path))
+    score = 0
     score_path = os.path.join(result_dir, "score.json")
     if os.path.exists(score_path):
-        entry["score_pct"] = json.load(open(score_path)).get("pct", 0)
+        score = json.load(open(score_path)).get("pct", 0)
+    entry = {
+        "agent": "overseer",
+        "run": result_dir,
+        "input_tokens": u.get("input_tokens", 0),
+        "output_tokens": u.get("output_tokens", 0),
+        "cost_usd": u.get("total_cost_usd", 0),
+        "turns": u.get("num_turns", 0),
+        "duration_s": u.get("duration_ms", 0) / 1000,
+        "score_pct": score,
+    }
+    _append(entry)
 
-    # Auditor size (proxy for token usage — no direct tracking)
+
+def track_auditor(result_dir):
     audit_path = os.path.join(result_dir, "audit.md")
-    if os.path.exists(audit_path):
-        entry["auditor"] = {"output_bytes": os.path.getsize(audit_path)}
+    findings_path = os.path.join(result_dir, "audit_findings.md")
+    if not os.path.exists(audit_path): return
+    entry = {
+        "agent": "auditor",
+        "run": result_dir,
+        "output_bytes": os.path.getsize(audit_path),
+        "findings_bytes": os.path.getsize(findings_path) if os.path.exists(findings_path) else 0,
+    }
+    _append(entry)
 
-    # Trainer changelog
+
+def track_trainer(result_dir):
     changelog_path = os.path.join(result_dir, "trainer_changelog.json")
+    summary_path = os.path.join(result_dir, "trainer_summary.txt")
+    if not os.path.exists(summary_path) and not os.path.exists(changelog_path): return
+    entry = {"agent": "trainer", "run": result_dir}
     if os.path.exists(changelog_path):
         cl = json.load(open(changelog_path))
-        entry["trainer"] = {
-            "changes": len(cl.get("changes", [])),
-            "issue": cl.get("issue_addressed", ""),
-        }
+        entry["changes"] = len(cl.get("changes", []))
+        entry["issue"] = cl.get("issue_addressed", "")
+    if os.path.exists(summary_path):
+        text = open(summary_path).read()
+        # Extract token line if present
+        for line in text.splitlines():
+            if line.startswith("Tokens:"):
+                try:
+                    parts = line.split()
+                    entry["total_tokens"] = int(parts[1].replace(",", ""))
+                except: pass
+        entry["output_bytes"] = len(text)
+    _append(entry)
 
-    # Scenario
-    scenario_path = os.path.join(result_dir, "scenario.json")
-    if os.path.exists(scenario_path):
-        s = json.load(open(scenario_path))
-        entry["scenario"] = s.get("name", "?")
 
-    # Context efficiency: tokens per score point
-    total_tok = entry.get("overseer", {}).get("total_tokens", 0)
-    score = entry.get("score_pct", 0)
-    if total_tok > 0 and score > 0:
-        entry["tokens_per_pct"] = round(total_tok / score)
+def track_challenger(result_dir):
+    summary_path = os.path.join(result_dir, "challenger_summary.txt")
+    if not os.path.exists(summary_path): return
+    entry = {
+        "agent": "challenger",
+        "run": result_dir,
+        "output_bytes": os.path.getsize(summary_path),
+    }
+    _append(entry)
 
+
+def _append(entry):
     with open(TRACKER_PATH, "a") as f:
         f.write(json.dumps(entry) + "\n")
-    print(f"Tracked: {entry.get('scenario', '?')} — {score:.1f}% — {total_tok} tokens")
+    agent = entry.get("agent", "?")
+    tokens = entry.get("input_tokens", 0) + entry.get("output_tokens", 0) or entry.get("total_tokens", 0) or entry.get("output_bytes", 0)
+    print(f"  [{agent}] {tokens} tokens/bytes")
 
 
 def report():
@@ -75,53 +102,59 @@ def report():
             try: entries.append(json.loads(line.strip()))
             except: pass
 
-    if not entries:
-        print("No tracking data")
-        return
-
-    # Group by scenario
-    scenarios = {}
+    agents = {}
     for e in entries:
-        s = e.get("scenario", "?")
-        if s not in scenarios: scenarios[s] = []
-        scenarios[s].append(e)
+        a = e.get("agent", "?")
+        if a not in agents: agents[a] = []
+        agents[a].append(e)
 
-    print(f"{'Scenario':<30s} {'Runs':>4s} {'Avg Score':>9s} {'Avg Tokens':>10s} {'Tok/Pct':>8s} {'Avg Turns':>9s}")
-    print("-" * 75)
+    print(f"{'Agent':<12s} {'Runs':>5s} {'Avg Tokens':>12s} {'Total Tokens':>14s} {'Avg Cost':>10s} {'Total Cost':>12s}")
+    print("-" * 70)
 
-    total_tokens = 0
-    total_cost = 0
-    total_runs = 0
+    for agent in ["overseer", "auditor", "trainer", "challenger"]:
+        runs = agents.get(agent, [])
+        if not runs: continue
 
-    for scenario, runs in sorted(scenarios.items()):
-        scores = [r.get("score_pct", 0) for r in runs]
-        tokens = [r.get("overseer", {}).get("total_tokens", 0) for r in runs]
-        costs = [r.get("overseer", {}).get("cost_usd", 0) for r in runs]
-        turns = [r.get("overseer", {}).get("turns", 0) for r in runs]
-        tpp = [r.get("tokens_per_pct", 0) for r in runs if r.get("tokens_per_pct")]
+        if agent == "overseer":
+            tokens = [r.get("input_tokens", 0) + r.get("output_tokens", 0) for r in runs]
+            costs = [r.get("cost_usd", 0) for r in runs]
+        elif agent == "trainer":
+            tokens = [r.get("total_tokens", 0) or r.get("output_bytes", 0) for r in runs]
+            costs = [0] * len(runs)
+        else:
+            tokens = [r.get("output_bytes", 0) for r in runs]
+            costs = [0] * len(runs)
 
-        avg_score = sum(scores) / len(scores) if scores else 0
-        avg_tokens = sum(tokens) / len(tokens) if tokens else 0
-        avg_tpp = sum(tpp) / len(tpp) if tpp else 0
-        avg_turns = sum(turns) / len(turns) if turns else 0
+        avg_tok = sum(tokens) / len(tokens) if tokens else 0
+        avg_cost = sum(costs) / len(costs) if costs else 0
 
-        print(f"{scenario:<30s} {len(runs):>4d} {avg_score:>8.1f}% {avg_tokens:>10.0f} {avg_tpp:>8.0f} {avg_turns:>9.1f}")
+        print(f"{agent:<12s} {len(runs):>5d} {avg_tok:>12,.0f} {sum(tokens):>14,.0f} ${avg_cost:>9.4f} ${sum(costs):>11.4f}")
 
-        total_tokens += sum(tokens)
-        total_cost += sum(costs)
-        total_runs += len(runs)
-
-    print("-" * 75)
-    print(f"{'TOTAL':<30s} {total_runs:>4d} {'':>9s} {total_tokens:>10.0f} {'':>8s} {'':>9s}")
-    print(f"Total cost: ${total_cost:.4f}")
+    # Overseer efficiency
+    overseer_runs = agents.get("overseer", [])
+    if overseer_runs:
+        scores = [r.get("score_pct", 0) for r in overseer_runs]
+        tokens = [r.get("input_tokens", 0) + r.get("output_tokens", 0) for r in overseer_runs]
+        print(f"\nOverseer efficiency:")
+        print(f"  Avg score: {sum(scores)/len(scores):.1f}%")
+        print(f"  Avg tokens/run: {sum(tokens)/len(tokens):,.0f}")
+        scored = [(t, s) for t, s in zip(tokens, scores) if s > 0]
+        if scored:
+            avg_tpp = sum(t/s for t, s in scored) / len(scored)
+            print(f"  Avg tokens/score-point: {avg_tpp:,.0f}")
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: token_tracker.py <result_dir> | --report")
+        print("Usage: token_tracker.py <agent> <result_dir> | --report")
         sys.exit(1)
 
     if sys.argv[1] == "--report":
         report()
+    elif len(sys.argv) >= 3:
+        agent = sys.argv[1]
+        result_dir = sys.argv[2]
+        {"overseer": track_overseer, "auditor": track_auditor,
+         "trainer": track_trainer, "challenger": track_challenger}.get(agent, lambda x: print(f"Unknown agent: {agent}"))(result_dir)
     else:
-        track_run(sys.argv[1])
+        print("Usage: token_tracker.py <agent> <result_dir> | --report")

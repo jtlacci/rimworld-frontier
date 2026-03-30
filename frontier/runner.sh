@@ -1043,8 +1043,8 @@ fi
 RUN_SCORE=$(python3 -c "import json; d=json.load(open('$RESULT_DIR/score.json')); print(f'{d[\"pct\"]:.1f}%')" 2>/dev/null || echo "?")
 log_event "runner" "$SCENARIO_NAME" "run_$RUN_ID: $RUN_SCORE ($DURATION s)"
 
-# Track token usage
-python3 "$FRONTIER_DIR/frontier/token_tracker.py" "$RESULT_DIR" 2>/dev/null || true
+# Track overseer token usage
+python3 "$FRONTIER_DIR/frontier/token_tracker.py" overseer "$RESULT_DIR" 2>/dev/null || true
 
 # Auto-revert on big regression (>15pt drop from previous run)
 PREV_RUN_DIR=$(printf "%s/run_%03d" "$SCENARIO_DIR" "$((RUN_ID - 1))")

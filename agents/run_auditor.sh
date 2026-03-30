@@ -168,6 +168,9 @@ if marker in audit_text:
 echo "[auditor] Audit saved to $RESULT_DIR/audit.md" >> "$LIVE_LOG"
 echo "[auditor] Audit saved to $RESULT_DIR/audit.md"
 
+# Track auditor usage
+python3 "$FRONTIER_DIR/frontier/token_tracker.py" auditor "$RESULT_DIR" 2>/dev/null || true
+
 # Regenerate QMD summary (audit.md is already markdown — QMD indexes it directly)
 python3 "$FRONTIER_DIR/frontier/summarize_run.py" "$RESULT_DIR" 2>/dev/null || true
 command -v qmd &>/dev/null && qmd update 2>/dev/null || true
