@@ -1037,6 +1037,7 @@ log_event "runner" "$SCENARIO_NAME" "run_$RUN_ID: $RUN_SCORE ($DURATION s)"
 python3 "$FRONTIER_DIR/frontier/token_tracker.py" overseer "$RESULT_DIR" 2>/dev/null || true
 
 # Auto-revert on big regression (>15pt drop from previous run)
+SCENARIO_DIR="$FRONTIER_DIR/frontier/results/$SCENARIO_NAME"
 PREV_RUN_DIR=$(printf "%s/run_%03d" "$SCENARIO_DIR" "$((RUN_ID - 1))")
 if [[ -f "$PREV_RUN_DIR/score.json" ]]; then
     python3 -c "
