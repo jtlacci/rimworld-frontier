@@ -335,10 +335,14 @@ while True:
                         break
         except Exception:
             pass
-        total_raw_food = sum(v for k, v in resources.items()
-                            if isinstance(v, (int, float)) and
-                            (k.startswith("Meat_") or k in ("RawBerries", "RawRice", "RawCorn", "RawPotatoes", "RawFungus")))
-        total_meals = resources.get("MealSimple", 0) + resources.get("MealFine", 0) + resources.get("MealLavish", 0)
+        # Count stockpiled + ground items
+        ground = resources.get("_ground", {})
+        if not isinstance(ground, dict): ground = {}
+        def total_count(defName):
+            return (resources.get(defName, 0) if isinstance(resources.get(defName), (int, float)) else 0) + ground.get(defName, 0)
+        total_raw_food = sum(total_count(k) for k in set(list(resources.keys()) + list(ground.keys()))
+                            if k.startswith("Meat_") or k in ("RawBerries", "RawRice", "RawCorn", "RawPotatoes", "RawFungus"))
+        total_meals = total_count("MealSimple") + total_count("MealFine") + total_count("MealLavish")
         cookable_meals = total_raw_food // 10  # ~10 raw food units ≈ 0.5 nutrition = 1 simple meal
         sub_cookable = total_raw_food > 0 and total_raw_food < 10
         food_pipeline = {
