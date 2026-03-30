@@ -53,7 +53,7 @@ If the fix REQUIRES SDK/C#/telemetry changes that can't be solved through the pr
 
 ## QMD Search
 
-You have QMD via MCP tools (`mcp__qmd__query` and `mcp__qmd__search`).
+You have QMD via Bash: `qmd query "search terms" -c frontier-runs` or `qmd query "search terms" -c rimworld-wiki`.
 
 ### Past runs and trainer history (`-c frontier-runs`)
 Check what prompt approaches were tried before. If the same strategy failed, try something different.

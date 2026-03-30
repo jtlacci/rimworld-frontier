@@ -99,7 +99,7 @@ SCENARIO: <name> -> frontier/scenarios/<name>.json
 
 ## Research
 
-You have QMD via MCP tools (`mcp__qmd__query` and `mcp__qmd__search`), plus WebSearch and WebFetch. **Prefer QMD over web search** — it's faster and curated for this project.
+You have QMD via Bash: `qmd query "search terms" -c frontier-runs` or `qmd query "search terms" -c rimworld-wiki`. Prefer QMD over web search.
 
 ### RimWorld game knowledge (`-c rimworld-wiki`) — USE THIS TO DESIGN
 45+ pages of verified mechanics. Use for TWO purposes:

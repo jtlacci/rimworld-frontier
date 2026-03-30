@@ -41,7 +41,7 @@ For new/changed threads, peel back layers:
 - If spatial: Read `colony_map.txt`
 
 **Layer 3 — What's the game mechanic?**
-- Query QMD (`mcp__qmd__query`, collection `rimworld-wiki`): verify your assumptions about the mechanic
+- Query QMD (`Bash: qmd query "your question" -c rimworld-wiki
 - Don't guess how RimWorld works — look it up
 
 **Layer 5 — Form 3 hypotheses**
@@ -119,7 +119,7 @@ The full detective narrative — which threads you pulled, what you checked, hyp
   - `tool_calls.jsonl` — overseer tool calls: what code it ran per turn (`"tool":"Bash","code":"r.day1_setup()..."`)
   - `overseer_conversation.txt` — full overseer text output
 - **Read**: Only for `score.json`, `scenario.json`, and files a thread specifically needs.
-- **QMD** (`mcp__qmd__query`, `mcp__qmd__search`):
+Use QMD via Bash: `qmd query "search terms" -c frontier-runs` or `qmd query "search terms" -c rimworld-wiki`
   - `-c frontier-runs`: Past audits, overseer conversations, trainer changelogs, scores
   - `-c rimworld-wiki`: Game mechanics, room formulas, food pipeline, defNames
 - **Glob**: Find files in the result directory if needed.
