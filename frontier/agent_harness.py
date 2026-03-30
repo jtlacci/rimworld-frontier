@@ -16,6 +16,9 @@ Env vars:
 """
 import argparse, json, os, subprocess, sys, time
 
+# Unbuffered output so tee/tail see lines immediately
+sys.stdout.reconfigure(line_buffering=True)
+
 from openai import OpenAI
 
 DEFAULT_BASE_URL = "https://dashscope-us.aliyuncs.com/compatible-mode/v1"
