@@ -21,3 +21,17 @@ if [[ ! -d "$AGENT_REPO/sdk" ]]; then
     echo "Set AGENT_REPO env var to point to the rimworld-agent checkout." >&2
     exit 1
 fi
+
+# Qwen API config
+export DASHSCOPE_BASE_URL="${DASHSCOPE_BASE_URL:-https://dashscope-us.aliyuncs.com/compatible-mode/v1}"
+# DASHSCOPE_API_KEY must be set in environment
+
+# Model assignments
+export MODEL_OVERSEER="${MODEL_OVERSEER:-qwen-plus}"
+export MODEL_AUDITOR="${MODEL_AUDITOR:-qwen-max}"
+export MODEL_TRAINER="${MODEL_TRAINER:-qwen-max}"
+export MODEL_CHALLENGER="${MODEL_CHALLENGER:-qwen-plus}"
+
+# Agent harness
+AGENT_HARNESS="$FRONTIER_DIR/frontier/agent_harness.py"
+export AGENT_HARNESS
