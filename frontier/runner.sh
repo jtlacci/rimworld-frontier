@@ -1042,3 +1042,22 @@ fi
 # Log to pipeline
 RUN_SCORE=$(python3 -c "import json; d=json.load(open('$RESULT_DIR/score.json')); print(f'{d[\"pct\"]:.1f}%')" 2>/dev/null || echo "?")
 log_event "runner" "$SCENARIO_NAME" "run_$RUN_ID: $RUN_SCORE ($DURATION s)"
+
+# Auto-revert on big regression (>15pt drop from previous run)
+PREV_RUN_DIR=$(printf "%s/run_%03d" "$SCENARIO_DIR" "$((RUN_ID - 1))")
+if [[ -f "$PREV_RUN_DIR/score.json" ]]; then
+    python3 -c "
+import json
+cur = json.load(open('$RESULT_DIR/score.json')).get('pct', 0)
+prev = json.load(open('$PREV_RUN_DIR/score.json')).get('pct', 0)
+drop = prev - cur
+if drop > 15:
+    print(f'REGRESSION: {prev:.1f}% → {cur:.1f}% (drop {drop:.1f}pts)')
+    print('REVERTING trainer commit in agent repo')
+    import subprocess
+    subprocess.run(['git', 'revert', 'HEAD', '--no-edit'], cwd='$AGENT_REPO', capture_output=True)
+    print('Reverted. Next run will use the pre-trainer code.')
+else:
+    print(f'Score delta: {prev:.1f}% → {cur:.1f}% ({drop:+.1f}pts) — no revert needed')
+" 2>/dev/null || true
+fi
