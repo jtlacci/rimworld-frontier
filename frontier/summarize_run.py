@@ -306,14 +306,4 @@ if __name__ == "__main__":
         f.write(summary)
     print(f"Summary written to {out_path}")
 
-    # Copy raw artifacts to .md so QMD indexes them (collection pattern is **/*.md)
-    # audit.md is already markdown — no copy needed
-    copy_as_md = [
-        ("overseer_conversation.txt", "overseer_conversation.md"),
-    ]
-    for src_name, dst_name in copy_as_md:
-        src = os.path.join(result_dir, src_name)
-        dst = os.path.join(result_dir, dst_name)
-        if os.path.exists(src):
-            import shutil
-            shutil.copy2(src, dst)
+    # audit.md and run_summary.md are already .md — QMD indexes them directly
