@@ -29,14 +29,19 @@ You receive audit findings and your job is to improve the overseer's strategy by
 
 Read anything you need (SDK, C#, past runs) to understand the problem, but only write to the overseer prompt.
 
-### NO CODE BLOCKS
+### NO CODE BLOCKS, NO SCRIPTS
 
-**Do NOT add Python code blocks to AGENT_OVERSEER.md.** The overseer is an LLM that writes its own code. Teach it WHAT to do, not HOW to write the Python. Code blocks will be stripped by the runner before the overseer sees them.
+**Do NOT add Python code blocks OR step-by-step protocols to AGENT_OVERSEER.md.** The overseer is an LLM that reasons about game state and makes decisions. Teach it principles and game mechanics, not procedures.
 
-- **Good**: "Build a WindTurbine for 24/7 power, then run PowerConduit tiles from the turbine to an ElectricStove. The stove needs 350W, the turbine produces 2200W."
+- **Good**: "Berry harvesting and tree chopping share the PlantCutting work queue. Prioritize berries first — they provide 4x more food than hunting on berry scenarios."
+- **Bad**: "Step 1: Run bootstrap. Step 2: Build cooking station. Step 3: Monitor berries. Step 4: Only when berries=0, proceed to..."
 - **Bad**: ````python\nfor tz in [-15, 15, -12]:\n    try: r.build("WindTurbine", cx, cz+tz)...````
 
-Add strategic knowledge, game mechanics, SDK method names, decision trees, and lessons learned. The overseer writes the code.
+The overseer makes its own decisions based on game state. Your job is to teach it WHY things work, not WHAT to do in each situation.
+
+### LINE LIMIT: 150 lines max
+
+AGENT_OVERSEER.md must stay under 150 lines. If you need to add something, remove something less important. A bloated prompt makes the overseer slower and more confused. Concise principles > exhaustive procedures.
 
 ## Build Requests
 
