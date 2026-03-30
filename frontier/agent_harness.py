@@ -68,6 +68,22 @@ TOOL_DEFS = {
             }
         }
     },
+    "Edit": {
+        "type": "function",
+        "function": {
+            "name": "Edit",
+            "description": "Replace a specific string in a file. The old_string must match exactly (including whitespace). Use this instead of Write when modifying an existing file — it's safer because it only changes what you specify.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "Absolute path to the file"},
+                    "old_string": {"type": "string", "description": "The exact text to find and replace"},
+                    "new_string": {"type": "string", "description": "The text to replace it with"}
+                },
+                "required": ["file_path", "old_string", "new_string"]
+            }
+        }
+    },
     "Grep": {
         "type": "function",
         "function": {
@@ -128,6 +144,22 @@ def execute_tool(name, args):
             with open(path, "w") as f:
                 f.write(content)
             return f"Written {len(content)} bytes to {path}"
+
+        elif name == "Edit":
+            path = args.get("file_path", "")
+            old = args.get("old_string", "")
+            new = args.get("new_string", "")
+            with open(path) as f:
+                content = f.read()
+            count = content.count(old)
+            if count == 0:
+                return f"Error: old_string not found in {path}"
+            if count > 1:
+                return f"Error: old_string found {count} times in {path} — must be unique"
+            content = content.replace(old, new, 1)
+            with open(path, "w") as f:
+                f.write(content)
+            return f"Edited {path}: replaced {len(old)} chars with {len(new)} chars"
 
         elif name == "Grep":
             pattern = args.get("pattern", "")

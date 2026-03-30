@@ -115,7 +115,7 @@ python3 "$AGENT_HARNESS" \
     --model "$MODEL_TRAINER" \
     --system "$TRAINER_PROMPT" \
     --message "$TRAINER_MESSAGE" \
-    --tools "Bash,Read,Write,Glob,Grep" \
+    --tools "Bash,Read,Write,Edit,Glob,Grep" \
     --max-turns 200 \
     > >(tee -a $FRONTIER_DIR/frontier/logs/agent_live.jsonl > "$TMPFILE") 2>> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl" &
 TRAINER_PID=$!
