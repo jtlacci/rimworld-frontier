@@ -165,8 +165,10 @@ def run_agent(model, system_prompt, user_message, allowed_tools, max_turns):
     # Build tool list
     tools = [TOOL_DEFS[t] for t in allowed_tools.split(",") if t.strip() in TOOL_DEFS]
 
+    # Append thinking instruction to system prompt
+    thinking_instruction = "\n\nIMPORTANT: Before EVERY tool call, you MUST write a text response explaining your reasoning — what you observed, what you plan to do, and why. Never make a tool call without text explanation first."
     messages = [
-        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": system_prompt + thinking_instruction},
         {"role": "user", "content": user_message},
     ]
 
