@@ -27,9 +27,9 @@ export DASHSCOPE_BASE_URL="${DASHSCOPE_BASE_URL:-https://dashscope-us.aliyuncs.c
 # DASHSCOPE_API_KEY must be set in environment
 
 # Model assignments
-export MODEL_OVERSEER="${MODEL_OVERSEER:-qwen3-max}"
-export MODEL_AUDITOR="${MODEL_AUDITOR:-qwen3-max}"
-export MODEL_TRAINER="${MODEL_TRAINER:-qwen3-max}"
+export MODEL_OVERSEER="${MODEL_OVERSEER:-qwen3.5-122b-a10b}"
+export MODEL_AUDITOR="${MODEL_AUDITOR:-qwen3.5-397b-a17b}"
+export MODEL_TRAINER="${MODEL_TRAINER:-qwen3.5-397b-a17b}"
 export MODEL_CHALLENGER="${MODEL_CHALLENGER:-qwen3.5-397b-a17b}"
 
 # Agent harness
