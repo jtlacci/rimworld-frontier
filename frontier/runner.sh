@@ -23,7 +23,7 @@ SCENARIO_NAME=$(python3 -c "import json; print(json.load(open('$SCENARIO_JSON'))
 SAVE_NAME="Frontier-${SCENARIO_NAME}"
 MAP_SIZE=$(python3 -c "import json; print(json.load(open('$SCENARIO_JSON')).get('map_size', 50))")
 
-OVERSEER_MODEL="sonnet"
+# MODEL_OVERSEER set in config.sh (qwen-plus)
 OVERSEER_TIMEOUT=1350  # 22.5 min hard limit for frontier runs
 GAME_DAY_LIMIT=4       # auto-pause game at this day (day 1 = start, day 4 = 3 days elapsed)
 
@@ -295,30 +295,19 @@ unset CLAUDECODE
 TMPFILE=$(mktemp)
 OVERSEER_EXIT=0
 
+OVERSEER_MESSAGE="Run the colony on this ${MAP_SIZE}x${MAP_SIZE} map (scenario: $SCENARIO_NAME).
+
+Follow the strategy in your system prompt. Use skills and the reader script.
+
+After the game reaches day 3-4, save with save_game.py and output a brief report."
+
 echo '{"_agent":"overseer","type":"agent_start"}' >> "$LIVE_LOG"
-env -u CLAUDECODE claude -p \
-    --model "$OVERSEER_MODEL" \
+python3 "$AGENT_HARNESS" \
+    --model "$MODEL_OVERSEER" \
+    --system "$SYSTEM_PROMPT" \
+    --message "$OVERSEER_MESSAGE" \
+    --tools "Bash,Read,Write" \
     --max-turns 200 \
-    --output-format stream-json \
-    --verbose \
-    --dangerously-skip-permissions \
-    --allowedTools "Bash,Read,Write,mcp__qmd__query,mcp__qmd__search" \
-    --system-prompt "$SYSTEM_PROMPT" \
-    --no-session-persistence \
-    "Run the colony on this ${MAP_SIZE}x${MAP_SIZE} map (scenario: $SCENARIO_NAME).
-
-Follow the execution plan in the system prompt exactly. Use SDK helpers — they handle coordinates and error wrapping.
-
-After saving, output a brief report ending with:
-=== END REPORT ===
-
-STRUCTURED_OBSERVATIONS:
-  campfire_built_game_hour: [hour or never]
-  first_meal_game_hour: [hour or never]
-  packs_consumed: [N]
-  construction_bottleneck: [what blocked or none]
-  game_days_elapsed: [N]
-  sdk_issues: [any SDK problems encountered]" \
     > >(tee -a "$LIVE_LOG" > "$TMPFILE") 2>> "$LIVE_LOG" &
 OVERSEER_PID=$!
 
@@ -345,7 +334,7 @@ except: print(0)
             log "Game day $GAME_DAY >= limit $GAME_DAY_LIMIT — stopping overseer"
             kill "$OVERSEER_PID" 2>/dev/null; sleep 2
             kill -9 "$OVERSEER_PID" 2>/dev/null || true
-            pkill -f "claude -p" 2>/dev/null || true
+            pkill -f "agent_harness" 2>/dev/null || true
             OVERSEER_EXIT=124
             python3 -c "
 import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
@@ -360,7 +349,7 @@ r = RimClient(); r.pause(); r.save(name='$SAVE_NAME'); r.close()
         log "WARNING: Overseer hit ${OVERSEER_TIMEOUT}s timeout — killing"
         kill "$OVERSEER_PID" 2>/dev/null; sleep 2
         kill -9 "$OVERSEER_PID" 2>/dev/null || true
-        pkill -f "claude -p" 2>/dev/null || true
+        pkill -f "agent_harness" 2>/dev/null || true
         OVERSEER_EXIT=124
         python3 -c "
 import sys; sys.path.insert(0, '$AGENT_REPO/sdk')

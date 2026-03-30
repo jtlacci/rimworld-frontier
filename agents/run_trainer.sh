@@ -97,18 +97,7 @@ TRAINER_EXIT=0
 
 log "Spawning trainer agent..."
 
-unset CLAUDECODE
-echo '{"_agent":"trainer","type":"agent_start"}' >> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
-env -u CLAUDECODE claude -p \
-    --model "opus" \
-    --max-turns 200 \
-    --output-format stream-json \
-    --verbose \
-    --dangerously-skip-permissions \
-    --allowedTools "Bash,Read,Edit,Write,Glob,Grep,mcp__qmd__query,mcp__qmd__search" \
-    --system-prompt "$TRAINER_PROMPT" \
-    --no-session-persistence \
-    "Project root (agent repo): $AGENT_REPO
+TRAINER_MESSAGE="Project root (agent repo): $AGENT_REPO
 
 SCENARIO: $SCENARIO_NAME
 ${SCENARIO_JSON:+SCENARIO CONFIG:
@@ -119,7 +108,15 @@ $SCORE_JSON
 }
 AUDIT (from $DIAGNOSIS_PATH):
 
-$DIAGNOSIS_CONTENT" \
+$DIAGNOSIS_CONTENT"
+
+echo '{"_agent":"trainer","type":"agent_start"}' >> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
+python3 "$AGENT_HARNESS" \
+    --model "$MODEL_TRAINER" \
+    --system "$TRAINER_PROMPT" \
+    --message "$TRAINER_MESSAGE" \
+    --tools "Bash,Read,Write,Glob,Grep" \
+    --max-turns 200 \
     > >(tee -a $FRONTIER_DIR/frontier/logs/agent_live.jsonl > "$TMPFILE") 2>> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl" &
 TRAINER_PID=$!
 

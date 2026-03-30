@@ -89,17 +89,7 @@ TMPFILE=$(mktemp)
 
 log "Spawning challenger agent..."
 
-echo '{"_agent":"challenger","type":"agent_start"}' >> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
-env -u CLAUDECODE claude -p \
-    --model "sonnet" \
-    --max-turns 200 \
-    --output-format stream-json \
-    --verbose \
-    --dangerously-skip-permissions \
-    --allowedTools "Write,WebSearch,WebFetch,mcp__qmd__query,mcp__qmd__search" \
-    --no-session-persistence \
-    --system-prompt "$CHALLENGER_PROMPT" \
-    "Design the next version of this scenario. Project root: $FRONTIER_DIR
+CHALLENGER_MESSAGE="Design the next version of this scenario. Project root: $FRONTIER_DIR
 
 CURRENT SCENARIO ($SCENARIO_PATH):
 $SCENARIO_CONTENT
@@ -110,10 +100,17 @@ $MISSION_RUBRIC
 }RUN RESULTS:
 $RUN_CONTEXT
 INSTRUCTIONS:
-1. Use QMD to search past runs and game mechanics BEFORE designing.
+1. Search past runs and game mechanics BEFORE designing.
 2. Write the scenario JSON to $SCENARIOS_DIR/.
-3. Print your CHALLENGER SUMMARY with feasibility math.
-4. Use WebSearch only for edge cases not in the wiki." \
+3. Print your CHALLENGER SUMMARY with feasibility math."
+
+echo '{"_agent":"challenger","type":"agent_start"}' >> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl"
+python3 "$AGENT_HARNESS" \
+    --model "$MODEL_CHALLENGER" \
+    --system "$CHALLENGER_PROMPT" \
+    --message "$CHALLENGER_MESSAGE" \
+    --tools "Write,Read,Bash,Grep" \
+    --max-turns 200 \
     > >(tee -a $FRONTIER_DIR/frontier/logs/agent_live.jsonl > "$TMPFILE") 2>> "$FRONTIER_DIR/frontier/logs/agent_live.jsonl" &
 CHALLENGER_PID=$!
 

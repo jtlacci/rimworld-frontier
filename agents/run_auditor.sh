@@ -74,16 +74,13 @@ Write your full investigation as markdown — the thinking process IS the output
 live() { echo "$1"; echo "$1" >> "$LIVE_LOG"; }
 echo '{"_agent":"auditor","type":"agent_start"}' >> "$LIVE_LOG"
 AUDITOR_TMP=$(mktemp)
-env -u CLAUDECODE claude -p \
-    --model opus \
+python3 "$AGENT_HARNESS" \
+    --model "$MODEL_AUDITOR" \
+    --system "$SYSTEM_PROMPT" \
+    --message "$INSTRUCTIONS" \
+    --tools "Read,Bash,Glob,Grep" \
     --max-turns 200 \
-    --output-format stream-json \
-    --verbose \
-    --allowedTools "Read,Bash,Glob,Grep,mcp__qmd__query,mcp__qmd__search" \
-    --dangerously-skip-permissions \
-    --no-session-persistence \
-    --system-prompt "$SYSTEM_PROMPT" \
-    "$INSTRUCTIONS" > >(tee -a "$LIVE_LOG" > "$AUDITOR_TMP") 2>> "$LIVE_LOG"
+    > >(tee -a "$LIVE_LOG" > "$AUDITOR_TMP") 2>> "$LIVE_LOG"
 
 # Extract full text from stream-json → save as audit.md
 python3 -c "
