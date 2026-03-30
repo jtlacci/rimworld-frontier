@@ -289,6 +289,7 @@ ${MISSION_PROMPT:+## MISSION INSTRUCTIONS
 $MISSION_PROMPT}"
 
 export RIM_SDK_LOG="$RESULT_DIR/command_log.jsonl"
+export SDK_PATH="$AGENT_REPO/sdk"
 
 unset CLAUDECODE
 TMPFILE=$(mktemp)
