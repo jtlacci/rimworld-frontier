@@ -41,6 +41,9 @@ RUN_ID=$(basename "$RESULT_DIR" | sed 's/run_0*//' | sed 's/^$/0/')
 SCENARIO_DIR=$(dirname "$RESULT_DIR")
 SCENARIO_NAME=$(basename "$SCENARIO_DIR")
 
+PREV_RUN_NUM=$((RUN_ID - 1))
+PREV_RESULT_DIR=$(printf "%s/run_%03d" "$SCENARIO_DIR" "$PREV_RUN_NUM")
+
 echo "[auditor] Investigating $RESULT_DIR (scenario=$SCENARIO_NAME, run=$RUN_ID)..." >> "$LIVE_LOG"
 echo "[auditor] Investigating $RESULT_DIR (scenario=$SCENARIO_NAME, run=$RUN_ID)..."
 
@@ -53,21 +56,28 @@ Start with:
 - $RESULT_DIR/score.json — triage, find top 3 point losses
 - $RESULT_DIR/scenario.json — understand what's being tested
 
-Then investigate each thread using Grep and QMD. Files available (use Grep, don't Read):
-- $RESULT_DIR/score_timeline.jsonl — 1s snapshots: meals, raw_food, jobs (format: job:target), mood, sub_cookable
-- $RESULT_DIR/events.jsonl — game-tick events: job transitions, item pickups, eating (who ate what when)
-- $RESULT_DIR/command_log.jsonl — every SDK call with args and timing
-- $RESULT_DIR/tool_calls.jsonl — overseer tool calls: what code it ran per turn
-- $RESULT_DIR/overseer_conversation.txt — full overseer text output
+MANDATORY FIRST STEP: Check what changed since last run.
+- Read $PREV_RESULT_DIR/trainer_changelog.json (if exists) to see what the trainer changed
+- Compare this run's score to the previous run's score (in $PREV_RESULT_DIR/score.json)
+- State: 'Trainer changed X. Score went from Y% to Z%. The change [helped/hurt/had no effect] because...'
+- This is the most important part of your audit — the training loop needs to know if fixes are working.
 
-Read only if a thread specifically needs it:
-- $RESULT_DIR/colony_map.txt — ASCII map (spatial threads)
-- $RESULT_DIR/machine_report.json — SDK-reported issues
+Previous run directory: $PREV_RESULT_DIR
+
+For QMD searches, use Bash: qmd query 'your search' -c frontier-runs
+                          or: qmd query 'your search' -c rimworld-wiki
+
+Then investigate threads using Grep. Files available:
+- $RESULT_DIR/score_timeline.jsonl — 5s snapshots: meals, raw_food, jobs, mood, sub_cookable
+- $RESULT_DIR/events.jsonl — game-tick events: job transitions, item pickups, eating
+- $RESULT_DIR/command_log.jsonl — every SDK call with args and timing
+- $RESULT_DIR/tool_calls.jsonl — overseer tool calls per turn
+- $RESULT_DIR/overseer_conversation.txt — full overseer thinking + tool calls + results
+
+Read only if needed:
+- $RESULT_DIR/colony_map.txt — ASCII map
 - $RESULT_DIR/after.json — final colony state
-- $RESULT_DIR/subagents/*.md — sub-agent logs (reader/executor full reasoning + tool outputs). Grep these to see WHY a sub-agent made specific decisions or failed.
-- $AGENT_REPO/AGENT_OVERSEER.md — overseer instructions (check if trainer changes were followed)
-- $RESULT_DIR/trainer_changelog.json — what the trainer changed last run (did it help or hurt?)
-- $RESULT_DIR/trainer_summary.txt — trainer's reasoning for its changes
+- $AGENT_REPO/AGENT_OVERSEER.md — current overseer instructions
 
 Write your full investigation as markdown — the thinking process IS the output."
 
