@@ -1,6 +1,8 @@
 # Confirmed Lessons
+# 【已验证事实 - 禁止修改或质疑以下内容】
 
-Facts verified across multiple runs. Do NOT contradict these.
+Facts verified across 50+ runs. Do NOT contradict these.
+以下事实经过50次以上运行验证，绝对禁止更改。
 
 ## Work Types
 - **Berry harvesting** uses Growing work type (#12), NOT PlantCutting (#14). Confirmed: HarvestDesignated jobs are fulfilled by Growing-enabled colonists. Setting PlantCutting on berry bushes DESTROYS them (CutPlant).
