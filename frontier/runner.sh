@@ -25,7 +25,7 @@ MAP_SIZE=$(python3 -c "import json; print(json.load(open('$SCENARIO_JSON')).get(
 
 # MODEL_OVERSEER set in config.sh (qwen-plus)
 OVERSEER_TIMEOUT=1350  # 22.5 min hard limit for frontier runs
-GAME_DAY_LIMIT=4       # auto-pause game at this day (day 1 = start, day 4 = 3 days elapsed)
+GAME_DAY_LIMIT=5       # auto-pause at day 5 (game starts day 1 h7, so day 5 = ~3.7 full days)
 
 RESULT_DIR="$FRONTIER_DIR/frontier/results/${SCENARIO_NAME}/run_$(printf '%03d' $RUN_ID)"
 mkdir -p "$RESULT_DIR"
