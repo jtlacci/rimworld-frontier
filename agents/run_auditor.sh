@@ -115,17 +115,41 @@ rm -f "$AUDITOR_TMP"
 
 # Extract findings section for trainer (compact, no investigation details)
 python3 -c "
+import re
 text = open('$RESULT_DIR/audit.md').read()
-start_marker = '=== AUDIT FINDINGS ==='
-end_marker = '=== END AUDIT FINDINGS ==='
-if start_marker in text and end_marker in text:
-    findings = text[text.index(start_marker) + len(start_marker):text.index(end_marker)].strip()
+
+findings = None
+
+# Try exact markers first
+if '=== AUDIT FINDINGS ===' in text and '=== END AUDIT FINDINGS ===' in text:
+    findings = text[text.index('=== AUDIT FINDINGS ===') + len('=== AUDIT FINDINGS ==='):text.index('=== END AUDIT FINDINGS ===')].strip()
+
+# Fallback: extract from '# Findings:' heading to end or next '# ' heading
+if not findings:
+    m = re.search(r'^(# Findings:.*?)(?=\n# [^F]|\Z)', text, re.DOTALL | re.MULTILINE)
+    if m:
+        findings = m.group(1).strip()
+
+# Fallback: extract triage + all '## ' sections (skip investigation narrative)
+if not findings:
+    sections = []
+    for m in re.finditer(r'^(## .+?)(?=\n## |\Z)', text, re.DOTALL | re.MULTILINE):
+        section = m.group(1).strip()
+        # Skip long investigation sections, keep short findings
+        if len(section) < 2000:
+            sections.append(section)
+    if sections:
+        findings = '\n\n'.join(sections)
+
+if findings:
     with open('$RESULT_DIR/audit_findings.md', 'w') as f:
         f.write(findings)
-    print(f'  Findings extracted to audit_findings.md')
+    print(f'  Findings extracted ({len(findings)} bytes)')
 else:
-    # Fallback: trainer reads full audit
-    print('  WARNING: No AUDIT FINDINGS markers found — trainer will read full audit.md')
+    # Last resort: truncate full audit to first 3000 chars
+    with open('$RESULT_DIR/audit_findings.md', 'w') as f:
+        f.write(text[:3000])
+    print(f'  WARNING: No structured findings — using truncated audit')
 " 2>/dev/null || true
 
 # Print summary
