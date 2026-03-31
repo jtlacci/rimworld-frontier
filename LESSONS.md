@@ -5,9 +5,9 @@ Facts verified across 50+ runs. Do NOT contradict these.
 以下事实经过50次以上运行验证，绝对禁止更改。
 
 ## Work Types
-- **Berry harvesting** uses Growing work type (#12), NOT PlantCutting (#14). Confirmed: HarvestDesignated jobs are fulfilled by Growing-enabled colonists. Setting PlantCutting on berry bushes DESTROYS them (CutPlant).
-- **PlantCutting (#14)** is for tree chopping and plant destruction ONLY. Never set PlantCutting priority for berry harvesting.
-- **Growing (#12)** handles both berry harvesting AND crop sowing. They compete in the same queue. On short scenarios, do NOT create grow zones — sowing displaces harvesting.
+- **Berry harvesting** uses Growing work type (#12). Evidence: run_028 timeline shows colonists with Growing=2 doing HarvestDesignated:Plant_Berry jobs. The C# mod uses DesignationDefOf.HarvestPlant which vanilla RimWorld assigns to Growing workers. 验证方法：r.harvest()创建HarvestPlant指定，由Growing工人执行。
+- **PlantCutting (#14)** is for tree chopping (CutPlant designation) ONLY. Using CutPlant on berry bushes DESTROYS them without yielding berries.
+- **Growing (#12)** handles both berry harvesting AND crop sowing. They compete in the same queue. On short scenarios, do NOT create grow zones — sowing displaces harvesting. Set Growing=1 for berry gatherers but do NOT create grow zones.
 - Work type check order: Cook(#9) > Hunt(#10) > Construct(#11) > Grow(#12) > Mine(#13) > PlantCut(#14). Same-priority ties break left-to-right.
 
 ## Food Pipeline
