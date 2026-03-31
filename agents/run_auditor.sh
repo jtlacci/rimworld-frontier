@@ -49,8 +49,14 @@ echo "[auditor] Investigating $RESULT_DIR (scenario=$SCENARIO_NAME, run=$RUN_ID)
 
 SYSTEM_PROMPT="$(cat "$PROMPT_FILE")"
 
+RUN_CONTEXT="$(python3 "$FRONTIER_DIR/frontier/build_context.py" "$SCENARIO_DIR" "$RUN_ID" 2>/dev/null || echo "")"
+
 # Triage instructions — auditor decides what to read
 INSTRUCTIONS="Investigate the run results in: $RESULT_DIR (scenario=$SCENARIO_NAME, run_id=$RUN_ID)
+
+${RUN_CONTEXT:+## Memory (from previous runs — DO NOT re-investigate known facts)
+
+$RUN_CONTEXT}
 
 Start with:
 - $RESULT_DIR/score.json — triage, find top 3 point losses

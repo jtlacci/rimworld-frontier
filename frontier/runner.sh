@@ -271,6 +271,7 @@ phase_mark "overseer" "start"
 log "Spawning overseer (${OVERSEER_TIMEOUT}s limit, map=${MAP_SIZE}x${MAP_SIZE})..."
 
 OVERSEER_PROMPT="$(cat "$AGENT_REPO/AGENT_OVERSEER.md")"
+RUN_CONTEXT="$(python3 "$FRONTIER_DIR/frontier/build_context.py" "$FRONTIER_DIR/frontier/results/$SCENARIO_NAME" "$RUN_ID" 2>/dev/null || echo "")"
 
 SYSTEM_PROMPT="$OVERSEER_PROMPT
 
@@ -282,7 +283,9 @@ Map: ${MAP_SIZE}x${MAP_SIZE}. Game is loaded, paused, incidents disabled, items 
 Save name: $SAVE_NAME
 SDK_PATH: $AGENT_REPO/sdk
 
-When spawning sub-agents, use SDK_PATH=$AGENT_REPO/sdk in their system prompts.
+${RUN_CONTEXT:+## Memory (from previous runs)
+
+$RUN_CONTEXT}
 
 ${MISSION_PROMPT:+## MISSION INSTRUCTIONS
 

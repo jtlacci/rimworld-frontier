@@ -97,6 +97,8 @@ TRAINER_EXIT=0
 
 log "Spawning trainer agent..."
 
+TRAINER_CONTEXT="$(python3 "$FRONTIER_DIR/frontier/build_context.py" "$FRONTIER_DIR/frontier/results/$SCENARIO_NAME" 2>/dev/null || echo "")"
+
 TRAINER_MESSAGE="Project root (agent repo): $AGENT_REPO
 
 SCENARIO: $SCENARIO_NAME
@@ -105,6 +107,10 @@ $SCENARIO_JSON
 }
 ${SCORE_JSON:+CURRENT SCORE:
 $SCORE_JSON
+}
+${TRAINER_CONTEXT:+## Memory (CONFIRMED FACTS — do NOT contradict these)
+
+$TRAINER_CONTEXT
 }
 AUDIT (from $DIAGNOSIS_PATH):
 
