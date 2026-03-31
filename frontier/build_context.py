@@ -57,16 +57,23 @@ def build_context(scenario_dir, current_run=None):
                     lines.append("")
                     break
 
-    # Confirmed lessons
+    # Confirmed lessons (capped at 50 lines to prevent prompt bloat)
     lessons_path = os.path.join(os.path.dirname(scenario_dir), "..", "LESSONS.md")
     if os.path.exists(lessons_path):
-        text = open(lessons_path).read().strip()
-        if text:
+        lesson_lines = open(lessons_path).read().strip().splitlines()[:50]
+        if lesson_lines:
             lines.append("## Confirmed Lessons (verified across runs)")
-            lines.append(text)
+            lines.extend(lesson_lines)
+            if len(open(lessons_path).readlines()) > 50:
+                lines.append("  ... (truncated at 50 lines)")
             lines.append("")
 
-    return "\n".join(lines)
+    # Total output cap — 2000 chars max
+    result = "\n".join(lines)
+    if len(result) > 2000:
+        result = result[:2000] + "\n... (memory truncated)"
+
+    return result
 
 
 if __name__ == "__main__":
