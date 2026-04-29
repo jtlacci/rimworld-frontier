@@ -1,0 +1,32 @@
+{
+  "name": "example_mod_test",
+  "map_size": 50,
+  "terrain": "SoilRich",
+  "mountains": "none",
+  "water": "none",
+  "trees": true,
+  "tree_density": 0.1,
+  "temperature": 20,
+  "seed": 42,
+  "berry_bushes": 10,
+  "starting_packs": 10,
+  "starting_items": {"Steel": 1000, "WoodLog": 300},
+  "completed_research": ["ComplexFurniture"],
+  "grass": true,
+  "grass_density": 0.6,
+  "mission_description": "Smoke-test for MyMod. Build a small colony with a workbench from the mod and use it.",
+  "mod_under_test": {
+    "id": "Author.MyMod",
+    "name": "My Mod"
+  },
+  "pass_criteria": [
+    {"name": "no_red_errors", "type": "no_red_errors"},
+    {"name": "all_alive", "type": "all_colonists_alive"},
+    {"name": "mod_workbench_built", "type": "thing_exists", "def": "MyMod_Workbench"}
+  ],
+  "observe": [
+    "Did the agent successfully construct the mod's workbench?",
+    "Did colonists interact with the workbench, or did pathing/AI ignore it?",
+    "Were any mod-added research entries visible and selectable?"
+  ]
+}

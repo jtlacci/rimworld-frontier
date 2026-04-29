@@ -64,6 +64,9 @@ class ScenarioConfig:
     mission: str | None = None                      # mission identifier (matches SCENARIO_*.md)
     mission_description: str | None = None          # short description of the mission goal
     scoring: dict[str, dict] | None = None           # custom scoring rubric, see frontier/scoring.py
+    mod_under_test: dict | None = None               # {"id": "Author.MyMod", "name": "My Mod"} — surfaces in reports
+    pass_criteria: list[dict] | None = None          # [{"name": "...", "type": "...", ...}], see frontier/criteria.py
+    observe: list[str] | None = None                 # free-text questions for the qualitative report
 
     def difficulty_vector(self) -> list[float]:
         """Normalized 0-1 per dimension, higher = harder."""
