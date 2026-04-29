@@ -1,9 +1,10 @@
 #!/bin/bash
-# Frontier scenario runner — parameterized version of auditor_loop.sh
+# Playtest scenario runner — runs one scenario end-to-end.
 # Usage: ./frontier/runner.sh <scenario_config.json> [run_id]
 #
-# Accepts a scenario JSON config instead of hardcoded "Baseline-Starter".
-# Hard timeout: 300s (5 min). Overseer gets max 3 tool calls.
+# Phases: savegen → load → before_snapshot → smoke_test → overseer → score →
+#         charts → criteria → colony_map → reporter
+#
 # Results saved to frontier/results/<scenario_name>/run_<id>/
 #
 # Requires: AGENT_REPO env var (or source config.sh first)
@@ -79,7 +80,7 @@ kill_and_restart_game() {
     ensure_game_running
 }
 
-log "========== FRONTIER: $SCENARIO_NAME (run $RUN_ID) =========="
+log "========== PLAYTEST: $SCENARIO_NAME (run $RUN_ID) =========="
 
 # ─── Phase 0: Generate save file ───
 log "Generating save for scenario: $SCENARIO_NAME..."
@@ -271,7 +272,6 @@ phase_mark "overseer" "start"
 log "Spawning overseer (${OVERSEER_TIMEOUT}s limit, map=${MAP_SIZE}x${MAP_SIZE})..."
 
 OVERSEER_PROMPT="$(cat "$AGENT_REPO/AGENT_OVERSEER.md")"
-RUN_CONTEXT="$(python3 "$FRONTIER_DIR/frontier/build_context.py" "$FRONTIER_DIR/frontier/results/$SCENARIO_NAME" "$RUN_ID" 2>/dev/null || echo "")"
 
 SYSTEM_PROMPT="$OVERSEER_PROMPT
 
@@ -282,10 +282,6 @@ SYSTEM_PROMPT="$OVERSEER_PROMPT
 Map: ${MAP_SIZE}x${MAP_SIZE}. Game is loaded, paused, incidents disabled, items unforbidden.
 Save name: $SAVE_NAME
 SDK_PATH: $AGENT_REPO/sdk
-
-${RUN_CONTEXT:+## Memory (from previous runs)
-
-$RUN_CONTEXT}
 
 ${MISSION_PROMPT:+## MISSION INSTRUCTIONS
 
@@ -881,75 +877,30 @@ log "Generating timeline charts..."
 python3 "$FRONTIER_DIR/frontier/timeline_charts.py" "$RESULT_DIR" 2>/dev/null || log "Charts skipped (matplotlib not available)"
 phase_mark "charts" "end"
 
-# ─── Phase 5: Update frontier tracker ───
-phase_mark "frontier_tracking" "start"
-log "Updating frontier tracker..."
+# ─── Phase 5: Evaluate pass criteria ───
+phase_mark "criteria" "start"
+log "Evaluating pass_criteria..."
 
-python3 << PYEOF - "$RESULT_DIR" "$RUN_ID" "$SCENARIO_JSON"
-import sys, json; sys.path.insert(0, '$FRONTIER_DIR')
-from frontier.tracker import FrontierTracker, RunResult
-from frontier.analyzer import analyze_run, summarize_failures
+python3 << PYEOF - "$RESULT_DIR" "$SCENARIO_JSON"
+import sys, json
+from pathlib import Path
+sys.path.insert(0, '$FRONTIER_DIR')
 from frontier.scenario import ScenarioConfig
-from frontier.visualize import frontier_heatmap, frontier_summary
+from frontier.criteria import write_report
 
-result_dir = sys.argv[1]
-run_id = int(sys.argv[2])
-scenario_json = sys.argv[3]
+result_dir = Path(sys.argv[1])
+scenario = ScenarioConfig.from_json(open(sys.argv[2]).read())
 
-config = ScenarioConfig.from_json(open(scenario_json).read())
+criteria = scenario.pass_criteria or []
+report = write_report(result_dir, criteria)
 
-with open(f"{result_dir}/score.json") as f:
-    score_data = json.load(f)
-
-# Build RunResult
-result = RunResult(
-    scenario_name=config.name,
-    run_id=run_id,
-    score_pct=score_data.get("base_pct", 0),
-    base_score_pct=score_data.get("base_pct", 0),
-    adjusted_score_pct=score_data.get("pct", 0),
-    duration_s=score_data.get("efficiency", {}).get("duration_s", 0),
-    cost_usd=score_data.get("efficiency", {}).get("total_cost_usd", 0),
-)
-
-# Check for colonist deaths
-breakdown = score_data.get("breakdown", {})
-if breakdown.get("alive", {}).get("score", 1.0) < 1.0:
-    result.alive = False
-
-# Top losses
-top_losses = []
-for metric, info in breakdown.items():
-    if metric.startswith("_") or not isinstance(info, dict):
-        continue
-    lost = info.get("adjusted_weight", info.get("weight", 0)) * (1.0 - min(info.get("score", 0), 1.0))
-    if lost >= 1.0:
-        top_losses.append({"metric": metric, "lost": round(lost, 1), "score": info.get("score", 0)})
-top_losses.sort(key=lambda x: -x["lost"])
-result.top_losses = top_losses[:7]
-
-# Failure analysis
-failures = analyze_run(config, score_data)
-result.failure_categories = list(set(f.category for f in failures))
-
-# Record in tracker
-tracker = FrontierTracker()
-tracker.record_run(result)
-
-# Save scenario config for future reference
-config.save(tracker.state_path.parent / "scenarios" / f"{config.name}.json")
-
-# Print summary
-print()
-print(frontier_heatmap(tracker))
-print()
-print(frontier_summary(tracker))
-
-if failures:
-    print()
-    print(summarize_failures(failures))
+s = report["summary"]
+print(f"Playtest: {report['overall'].upper()} — {s['pass']}/{s['total']} pass, {s['fail']} fail, {s['deferred']} deferred")
+for c in report["criteria"]:
+    marker = {"pass": "[PASS]", "fail": "[FAIL]", "deferred": "[?]", "error": "[ERR]"}.get(c["status"], "[?]")
+    print(f"  {marker} {c['name']}: {c['detail']}")
 PYEOF
-phase_mark "frontier_tracking" "end"
+phase_mark "criteria" "end"
 
 # ─── Phase 6: Colony map ───
 phase_mark "colony_map" "start"
@@ -1021,7 +972,21 @@ print(f"Colony map saved (center={cx},{cz})")
 PYEOF
 phase_mark "colony_map" "end"
 
-log "========== FRONTIER: $SCENARIO_NAME (run $RUN_ID) COMPLETE =========="
+# ─── Phase 7: Playtest reporter ───
+HAS_REPORTING=$(python3 -c "
+import json
+s = json.load(open('$SCENARIO_JSON'))
+print('1' if s.get('pass_criteria') or s.get('observe') else '0')
+" 2>/dev/null || echo "0")
+
+if [[ "$HAS_REPORTING" == "1" ]]; then
+    phase_mark "reporter" "start"
+    log "Generating playtest report..."
+    "$FRONTIER_DIR/agents/run_reporter.sh" "$RESULT_DIR" || log "Reporter failed (continuing)"
+    phase_mark "reporter" "end"
+fi
+
+log "========== PLAYTEST: $SCENARIO_NAME (run $RUN_ID) COMPLETE =========="
 log "Results: $RESULT_DIR/"
 
 # Generate searchable run summary for QMD
@@ -1038,23 +1003,3 @@ log_event "runner" "$SCENARIO_NAME" "run_$RUN_ID: $RUN_SCORE ($DURATION s)"
 
 # Track overseer token usage
 python3 "$FRONTIER_DIR/frontier/token_tracker.py" overseer "$RESULT_DIR" 2>/dev/null || true
-
-# Auto-revert on big regression (>15pt drop from previous run)
-SCENARIO_DIR="$FRONTIER_DIR/frontier/results/$SCENARIO_NAME"
-PREV_RUN_DIR=$(printf "%s/run_%03d" "$SCENARIO_DIR" "$((RUN_ID - 1))")
-if [[ -f "$PREV_RUN_DIR/score.json" ]]; then
-    python3 -c "
-import json
-cur = json.load(open('$RESULT_DIR/score.json')).get('pct', 0)
-prev = json.load(open('$PREV_RUN_DIR/score.json')).get('pct', 0)
-drop = prev - cur
-if drop > 15:
-    print(f'REGRESSION: {prev:.1f}% → {cur:.1f}% (drop {drop:.1f}pts)')
-    print('REVERTING trainer commit in agent repo')
-    import subprocess
-    subprocess.run(['git', 'revert', 'HEAD', '--no-edit'], cwd='$AGENT_REPO', capture_output=True)
-    print('Reverted. Next run will use the pre-trainer code.')
-else:
-    print(f'Score delta: {prev:.1f}% → {cur:.1f}% ({drop:+.1f}pts) — no revert needed')
-" 2>/dev/null || true
-fi

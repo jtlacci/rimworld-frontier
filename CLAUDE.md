@@ -1,235 +1,64 @@
-# RimWorld Frontier — Training Harness
+# RimWorld Playtest Harness — Agent Notes
 
-Training infrastructure that evaluates and improves a RimWorld agent-playing mod.
-The agent code lives in a separate repo (`rimworld-tcp` / `rimworld-agent`).
+The user-facing onboarding doc is `README.md`. This file is a short summary for Claude Code agents working in this repo.
 
-## Architecture
+## What this repo is
 
-```
-┌─────────────────────────────────────────────┐
-│  AUDITOR (Opus, persistent conversation)    │
-│  Reviews batch results, fixes SDK/C#/prompt │
-└──────────┬──────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────────────────┐
-│  TRAIN LOOP (frontier/train.sh N)           │
-│  Auto-selects scenarios, runs N, summarizes │
-│                                             │
-│  For each run:                              │
-│    Scenario config → savegen → runner →     │
-│    overseer plays → monitor captures →      │
-│    score → charts → classify                │
-└──────────┬──────────────────────────────────┘
-           │
-    ┌──────┴──────┐
-    ▼             ▼
-┌────────┐  ┌──────────────┐
-│OVERSEER│  │SCORE MONITOR │
-│(Sonnet)│  │(20s snapshots)│
-│plays   │  │needs, jobs,  │
-│via SDK │  │resources,    │
-│        │  │wealth, mood  │
-└────────┘  └──────────────┘
-```
+A playtest harness for RimWorld mod builders. The builder writes a scenario JSON declaring map setup + `pass_criteria` + `observe` questions; the harness runs RimWorld, drives gameplay with a fixed agent, and emits `playtest_report.md` per run.
 
-## Repo Split
+The **agent that plays the game** lives in `$AGENT_REPO` (defaults to `../rimworld-tcp`), not here. This repo:
 
-This is the **training harness**. The **agent** (product being trained) lives at `$AGENT_REPO`.
+- Defines the scenario format (`frontier/scenario.py`)
+- Orchestrates one run (`frontier/runner.sh`)
+- Evaluates pass criteria (`frontier/criteria.py`)
+- Spawns a reporter agent that writes the builder-facing report (`agents/run_reporter.sh`, `AGENT_REPORTER.md`)
+- Provides batch + scaffolding tools (`frontier/playtest.sh`, `frontier/new_scenario.py`, `frontier/list_runs.py`)
 
-### This repo (rimworld-frontier)
-- Training loop, scoring, scenario management, failure analysis
-- Agent orchestration scripts (auditor, trainer, challenger, evaluator)
-- Run results, charts, frontier state
-- Agent prompts (AGENT_AUDITOR.md, AGENT_TRAINER.md, AGENT_CHALLENGER.md)
+The harness does NOT modify the agent's code or prompt — that lives in `$AGENT_REPO/AGENT_OVERSEER.md` and is the builder's stable, fixed component.
 
-### Agent repo ($AGENT_REPO)
-- C# Harmony mod (Source/) — TCP bridge, game commands
-- Python SDK (sdk/) — RimClient, snapshot, scoring
-- Overseer prompt (AGENT_OVERSEER.md)
-- Save generator (tools/savegen.py)
-- Reference docs (REFERENCE_RIMWORLD.md, REFERENCE_WIKI.md)
+## Run flow (one scenario)
 
-### Configuration
+`runner.sh <scenario.json> <run_id>` phases:
 
-All scripts source `config.sh` which sets:
-- `FRONTIER_DIR` — root of this repo (auto-detected)
-- `AGENT_REPO` — root of the agent repo (defaults to `../rimworld-tcp`, override with env var)
+1. `savegen` — generate `.rws` save via `$AGENT_REPO/tools/savegen.py`
+2. `load_save` — load into running RimWorld via `RimClient` (TCP to Harmony mod)
+3. `before_snapshot` — `take_snapshot()` → `before.json`
+4. `smoke_test` — verify telemetry; start background `score_monitor.py`
+5. `overseer` — spawn agent with `$AGENT_REPO/AGENT_OVERSEER.md` + scenario `mission_description`; agent drives via SDK
+6. `after_snapshot` + `scoring` → `after.json`, `score.json` (if `scoring` rubric declared)
+7. `charts` → `charts/*.png`
+8. `criteria` — evaluate `pass_criteria` deterministically → `playtest_report.json`
+9. `colony_map` → `colony_map.txt`
+10. `reporter` — LLM agent reads artifacts, writes `playtest_report.md`
 
-```bash
-# Override agent repo location:
-export AGENT_REPO=/path/to/rimworld-agent
-```
+`playtest.sh <scenarios>` just iterates `runner.sh` per scenario and prints a summary table.
 
-### Boundary
+## Key files
 
-| Question | Answer |
-|----------|--------|
-| Trainer commits where? | Agent repo only |
-| Auditor reads from where? | Both (agent for code, frontier for results) |
-| Challenger writes where? | Frontier repo (scenarios/) |
-| Runner lives where? | Frontier repo (orchestrates both) |
-| Score monitor lives where? | Frontier repo (uses agent SDK) |
-| Scoring/tracker lives where? | Frontier repo |
-| Results stored where? | Frontier repo |
-| C# changes? | Agent repo (trainer modifies) |
-| SDK changes? | Agent repo (trainer modifies) |
+- `frontier/scenario.py` — `ScenarioConfig` dataclass (every field a scenario can set)
+- `frontier/criteria.py` — `CHECKERS` dict; add new criterion types here
+- `frontier/runner.sh` — orchestrator; phase markers in `phases.jsonl`
+- `frontier/scoring.py` — optional quantitative rubric (`_score_from_config()`)
+- `agents/run_reporter.sh` + `AGENT_REPORTER.md` — the LLM that writes `playtest_report.md`
+- `config.sh` — `AGENT_REPO`, `FRONTIER_DIR`, model selections, API keys
 
-## Quick Start
+## Adding a new criterion type
 
-```bash
-# Single scenario run
-./frontier/runner.sh frontier/scenarios/baseline.json 1
+1. Write `_check_<name>(run_dir, crit) -> tuple[bool, str]` in `frontier/criteria.py`.
+2. Register in `CHECKERS`.
+3. Document in `README.md`'s pass-criteria table.
 
-# Run by name (auto-finds config)
-./frontier/run_scenario.sh baseline 1
+## SDK quirks (from accumulated bug-finding)
 
-# Analyze results (produces audit.json)
-./agents/run_auditor.sh frontier/results/baseline/run_001
+- `RimClient` lives at `$AGENT_REPO/sdk/`; runner imports via `sys.path.insert`
+- `colonists()` returns `{'colonists': [...]}`, not a flat list
+- `build(blueprint, x, z)` — positional or `z=`, never `y=`
+- Game state lookups in scoring use `after["colonists"]["colonists"]` and `after["resources"]`
+- macOS has no GNU `timeout` — `runner.sh` uses background PID + kill polling
+- See `$AGENT_REPO/REFERENCE_RIMWORLD.md` for the full list
 
-# Apply fixes from audit (commits to AGENT_REPO)
-./agents/run_trainer.sh frontier/results/baseline/run_001/audit.json
+## Things this harness intentionally does NOT do
 
-# Run eval set to check for regressions
-./agents/run_evaluator.sh
-
-# Auto-loop: run N scenarios, pick frontiers automatically
-./frontier/train.sh 5
-```
-
-## Project Structure
-
-```
-config.sh                      # AGENT_REPO + FRONTIER_DIR paths
-
-agents/
-  run_auditor.sh               # Deep failure investigation (opus, read-only)
-  run_trainer.sh               # Apply fixes from audit (opus, writes to agent repo)
-  run_challenger.sh            # Generate stress-test scenarios (sonnet)
-  run_evaluator.sh             # Regression check across eval set
-  listen.sh                    # Real-time event listener
-  listen_formatter.py          # Event formatter
-  score_monitor.py             # Background monitor (20s telemetry snapshots)
-
-frontier/
-  train.sh                     # Auto-loop: select scenarios, run batch, summarize
-  runner.sh                    # Single scenario runner (savegen → overseer → score → charts)
-  run_scenario.sh              # Run by name helper
-  run_calibration.sh           # Run all calibration scenarios
-  log_event.sh                 # Event logging utility
-  scenario.py                  # ScenarioConfig dataclass
-  scoring.py                   # Scenario-adaptive scoring (weight adjustments)
-  tracker.py                   # Frontier state (MASTERED/FRONTIER/IMPOSSIBLE per scenario)
-  analyzer.py                  # Failure categorization
-  timeline_charts.py           # 10 observability charts
-  visualize.py                 # ASCII heatmap of capability frontier
-  generator.py                 # Scenario generator
-  calibration.py               # Calibration scenarios
-  scenarios/                   # Scenario configs (JSON)
-  summarize_run.py             # Generate run_summary.md for QMD indexing
-  results/<scenario>/run_NNN/  # Per-run artifacts (see Run Artifacts below)
-  frontier_state.json          # Scenario classification state
-
-AGENT_AUDITOR.md               # Auditor prompt — failure investigation
-AGENT_TRAINER.md               # Trainer prompt — code fixes + strategy updates
-AGENT_CHALLENGER.md            # Challenger prompt — stress-test scenario design
-SCENARIO_*.md                  # Mission specs for specific scenarios
-```
-
-## Scoring (~153 points base + open-ended)
-
-Colony livability (shelter, food, impressiveness) dominates. Efficiency/meta metrics are low-weight.
-
-| Category | Pts | Key Metrics |
-|----------|-----|-------------|
-| Survival | 16 | alive (5), not_downed (2), food_safety (6), temp_safety (3) |
-| **Needs** | **26** | **shelter (10)**, stockpiles (1), **self_sufficiency (15)** |
-| Infra | 24 | bedrooms (6), storage_room (3), production_throughput (8+), queue_health (2), no_deterioration (2), research_progress (3) |
-| **Quality** | **43** | **building_progress (15+)**, **avg_beauty (8)**, **avg_impressiveness (20)** |
-| Wellbeing | 10 | avg_mood (3), worst_mood (1), no_breaks (1), quality_of_life (5) |
-| Efficiency | 9 | game_progress (3), time_efficiency (2), token_efficiency (3), no_sub_errors (1) |
-| Errors | 2 | unresolved_alerts (2) |
-| **Timeline** | **23** | **need_sustained (10)**, progress_pace (5), food_trajectory (5), workforce_usage (3) |
-
-## Frontier System
-
-Scenarios are classified by performance:
-- **TOO_EASY** (>=95%) — skip, not useful for training
-- **MASTERED** (85-95%) — solved, use for regression testing
-- **FRONTIER** (50-85%) — the learning edge, run these
-- **IMPOSSIBLE** (<50%) — blocked, needs SDK/mechanical fixes first
-
-## Workflow
-
-### New Scenario Design
-```
-1. CHALLENGER:   ./agents/run_challenger.sh <prev_scenario.json> <result_dir>
-2. TEST RUN:     ./frontier/runner.sh <new_scenario.json> 1
-3. AUDITOR:      ./agents/run_auditor.sh <result_dir>
-4. CALIBRATE:    If TOO_EASY (>=85%) or IMPOSSIBLE (<50%) → back to CHALLENGER
-                 If FRONTIER (50-85%) → proceed to training loops
-```
-
-### Training Loop (on a calibrated FRONTIER scenario)
-```
-1. RUN:          ./frontier/runner.sh <scenario.json> <run_id>
-2. AUDITOR:      ./agents/run_auditor.sh <result_dir>
-3. TRAINER:      ./agents/run_trainer.sh <audit.md>  (edits AGENT_OVERSEER.md only)
-4. VERIFY:       Re-run same scenario — did score improve?
-5. REVERT:       cd $AGENT_REPO && git revert HEAD  (if score regressed >5pts)
-6. REPEAT until MASTERED (85-95%) → move to next scenario
-```
-
-### Trainer Rollback Policy
-
-The trainer commits to the **agent repo**. After it commits, re-run the same scenario.
-Only revert on **major regressions** (>10pt drop or new colonist deaths).
-Minor regressions (<5pts) are acceptable if the failure profile improved.
-
-```bash
-# Review what trainer changed:
-cd $AGENT_REPO && git diff HEAD~1
-
-# Revert if score dropped:
-cd $AGENT_REPO && git revert HEAD
-```
-
-## Run Artifacts
-
-Each run at `results/<scenario>/run_NNN/` produces:
-
-| File | Source | Description |
-|------|--------|-------------|
-| `score.json` | scoring | Final score breakdown |
-| `score_timeline.jsonl` | score_monitor | 20s telemetry snapshots |
-| `command_log.jsonl` | SDK (RimClient) | Every SDK command with args, timing, success/error |
-| `phases.jsonl` | runner.sh | Phase start/end timestamps |
-| `overseer_conversation.txt` | runner.sh | Full overseer output |
-| `before.json` / `after.json` | runner.sh | Colony state snapshots |
-| `audit.json` | run_auditor.sh | Failure chains, execution gaps, recommendations |
-| `trainer_changelog.json` | run_trainer.sh | Structured list of code changes and issue addressed |
-| `run_summary.md` | summarize_run.py | QMD-indexed summary of all above |
-| `charts/*.png` | timeline_charts.py | 10 observability charts |
-
-## Run History Search (QMD)
-
-`run_summary.md` is auto-generated after each run (and regenerated after audits/trainer fixes) with: score breakdown, phase durations, timeline trends (food/buildings/mood arcs), SDK call stats (error rates, top commands), audit findings, and trainer changes. Indexed by QMD for semantic search.
-
-```bash
-# Search across all runs
-qmd query "cooking bill failures" -c frontier-runs
-qmd query "runs where food dropped mid-game" -c frontier-runs
-qmd query "high SDK error rate" -c frontier-runs
-qmd query "what fixes were tried for shelter" -c frontier-runs
-
-# Re-index after manual changes
-qmd update && qmd embed
-```
-
-## Key Gotchas
-
-- `build(blueprint, x, z)` — use positional args or `z=` keyword, NOT `y=`
-- `colonists()` returns `{'colonists': [...]}` not a flat list
-- macOS has no GNU `timeout` — scripts use background PID + kill polling
-- `--output-format stream-json` — timeout kills lose usage data
-- See $AGENT_REPO/REFERENCE_RIMWORLD.md for full list
+- **No agent training.** The trainer/auditor/challenger system from earlier versions is gone. The agent prompt is fixed; this harness just exercises it.
+- **No cross-run memory.** Each scenario is independent. We removed the `build_context.py` memory injection — a playtest should be reproducible, not biased by past runs.
+- **No frontier classification.** Scenarios are pass/fail, not MASTERED/FRONTIER/IMPOSSIBLE. There's no scenario picker — the builder runs what they choose.

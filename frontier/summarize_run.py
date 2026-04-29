@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate run_summary.md from run artifacts for QMD indexing.
 
-Extracts narrative content from score.json, audit.json, and
+Extracts narrative content from score.json, playtest_report.{json,md}, and
 overseer_conversation.txt into a single searchable markdown file.
 
 Usage: python3 frontier/summarize_run.py <result_dir>
@@ -212,47 +212,26 @@ def summarize(result_dir):
                 lines.append(f"- **{key}**: {val}")
         lines.append("")
 
-    # --- Audit (if available) ---
-    # audit.md is the full investigation — include it directly
-    audit_md_path = os.path.join(result_dir, "audit.md")
-    audit_json_path = os.path.join(result_dir, "audit.json")
-    if os.path.exists(audit_md_path):
-        with open(audit_md_path) as f:
-            audit_text = f.read().strip()
-        if audit_text:
-            lines.append("## Auditor Investigation\n")
-            lines.append(audit_text)
-            lines.append("")
-    elif os.path.exists(audit_json_path):
-        # Legacy: old JSON audits
-        audit = load_json(audit_json_path)
-        if audit:
-            lines.append("## Auditor Analysis (legacy JSON)\n")
-            lines.append(f"```json\n{json.dumps(audit, indent=2)[:2000]}\n```\n")
+    # --- Playtest Report ---
+    playtest_json = load_json(os.path.join(result_dir, "playtest_report.json"))
+    if playtest_json:
+        s = playtest_json.get("summary", {})
+        overall = playtest_json.get("overall", "?").upper()
+        lines.append("## Playtest Result\n")
+        lines.append(f"- **Overall**: {overall}")
+        lines.append(f"- **Criteria**: {s.get('pass', 0)} pass / {s.get('fail', 0)} fail / {s.get('deferred', 0)} deferred (of {s.get('total', 0)})")
+        lines.append("")
+        for c in playtest_json.get("criteria", []):
+            lines.append(f"  - [{c.get('status', '?')}] **{c.get('name', '?')}**: {c.get('detail', '')}")
+        lines.append("")
 
-    # --- Trainer Fixes ---
-    trainer_changelog = load_json(os.path.join(result_dir, "trainer_changelog.json"))
-    trainer_path = os.path.join(result_dir, "trainer_summary.txt")
-
-    if trainer_changelog:
-        lines.append("## Trainer Fixes\n")
-        issue = trainer_changelog.get("issue_addressed", "")
-        if issue:
-            lines.append(f"**Issue addressed**: {issue}\n")
-        changes = trainer_changelog.get("changes", [])
-        for ch in changes:
-            lines.append(f"- `{ch.get('file', '?')}`: {ch.get('description', '?')}")
-        if changes:
-            lines.append("")
-        validation = trainer_changelog.get("validation", "")
-        if validation:
-            lines.append(f"**Validation**: {validation}\n")
-    elif os.path.exists(trainer_path):
-        with open(trainer_path) as f:
-            trainer_text = f.read().strip()
-        if trainer_text:
-            lines.append("## Trainer Fixes\n")
-            lines.append(trainer_text)
+    playtest_md_path = os.path.join(result_dir, "playtest_report.md")
+    if os.path.exists(playtest_md_path):
+        with open(playtest_md_path) as f:
+            playtest_text = f.read().strip()
+        if playtest_text:
+            lines.append("## Playtest Report\n")
+            lines.append(playtest_text)
             lines.append("")
 
     # --- Overseer Highlights ---

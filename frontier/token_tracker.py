@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Track token usage per agent across all runs.
 
-Records: overseer, auditor, trainer, challenger — each as separate entries.
+Records: overseer, reporter — each as separate entries.
 Appends to token_usage.jsonl at frontier root.
 
 Usage:
   python3 frontier/token_tracker.py overseer <result_dir>
-  python3 frontier/token_tracker.py auditor <result_dir>
-  python3 frontier/token_tracker.py trainer <result_dir>
-  python3 frontier/token_tracker.py challenger <result_dir>
+  python3 frontier/token_tracker.py reporter <result_dir>
   python3 frontier/token_tracker.py --report
 """
 import json, os, sys

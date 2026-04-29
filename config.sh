@@ -28,9 +28,7 @@ export DASHSCOPE_BASE_URL="${DASHSCOPE_BASE_URL:-https://dashscope-us.aliyuncs.c
 
 # Model assignments
 export MODEL_OVERSEER="${MODEL_OVERSEER:-qwen3.5-397b-a17b}"
-export MODEL_AUDITOR="${MODEL_AUDITOR:-qwen3.5-397b-a17b}"
-export MODEL_TRAINER="${MODEL_TRAINER:-qwen3.5-397b-a17b}"
-export MODEL_CHALLENGER="${MODEL_CHALLENGER:-qwen3.5-397b-a17b}"
+export MODEL_REPORTER="${MODEL_REPORTER:-qwen3.5-397b-a17b}"
 
 # Agent harness
 AGENT_HARNESS="$FRONTIER_DIR/frontier/agent_harness.py"
