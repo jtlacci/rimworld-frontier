@@ -136,7 +136,7 @@ See `frontier/scenarios/example_mod_test.json` for the working template, and `fr
 | `all_colonists_alive` | — | Same number of colonists alive at end as at start |
 | `thing_exists` | `def` | At least one Thing of `def` exists at end of run |
 | `resource_at_least` | `resource`, `min` | Final stockpile of `resource` ≥ `min` |
-| `custom` | `description` | Plain-English — judged by the reporter agent based on run evidence |
+| `custom` | `description` | Plain-English — deferred to the reporter; the batch status is `REVIEW` until a human reads the report |
 
 Add more types in `frontier/criteria.py` (the `CHECKERS` dict).
 

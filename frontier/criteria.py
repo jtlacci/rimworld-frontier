@@ -60,14 +60,25 @@ def _check_no_red_errors(run_dir: Path, _crit: dict) -> tuple[bool, str]:
     Verse-style "Exception" / "Error in" lines.
     """
     cmds = _load_jsonl(run_dir / "command_log.jsonl")
-    sdk_errors = [c for c in cmds if c.get("error") or c.get("success") is False]
+    sdk_errors = [
+        c for c in cmds
+        if c.get("error") or c.get("ok") is False or c.get("success") is False
+    ]
 
     convo = run_dir / "overseer_conversation.txt"
     verse_errors = 0
-    if convo.exists():
-        for line in convo.read_text(errors="replace").splitlines():
+    for path in [convo, run_dir / "player_run.log", run_dir / "telemetry_errors.log"]:
+        if not path.exists():
+            continue
+        for line in path.read_text(errors="replace").splitlines():
             low = line.lower()
-            if "exception" in low or "error in " in low or "verse.log_error" in low:
+            if (
+                "exception" in low
+                or "error in " in low
+                or "verse.log_error" in low
+                or "[error]" in low
+                or "root level exception" in low
+            ):
                 verse_errors += 1
 
     total = len(sdk_errors) + verse_errors
@@ -112,7 +123,8 @@ def _check_thing_exists(run_dir: Path, crit: dict) -> tuple[bool, str]:
         if not isinstance(thing, dict):
             continue
         def_name = thing.get("def") or thing.get("defName") or thing.get("def_name")
-        if def_name == target:
+        built_def = thing.get("building") or thing.get("buildingDef") or thing.get("entityDefToBuild")
+        if def_name == target or built_def == target:
             return True, f"found {target}"
 
     return False, f"{target} not found in run artifacts"
@@ -201,7 +213,14 @@ def evaluate(run_dir: Path, criteria: list[dict]) -> dict:
         else:
             fail_count += 1
 
-    overall = "pass" if fail_count == 0 and pass_count > 0 else ("fail" if fail_count > 0 else "no_criteria")
+    if fail_count > 0:
+        overall = "fail"
+    elif deferred_count > 0:
+        overall = "review"
+    elif pass_count > 0:
+        overall = "pass"
+    else:
+        overall = "no_criteria"
 
     return {
         "overall": overall,
