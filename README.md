@@ -22,29 +22,28 @@ The agent is fixed: it's the same gameplay-driving agent across all your scenari
 
 - macOS, Linux, or Windows + RimWorld installed
 - Python 3.11+
-- A checkout of [`rimworld-tcp`](https://github.com/...) — the agent + Harmony mod that drives gameplay (defaults to `../rimworld-tcp`)
-- A DashScope API key (for the Qwen-based overseer/reporter agents) **OR** an Anthropic API key once Sonnet support lands
-- The Harmony mod from `rimworld-tcp/Source/` enabled in RimWorld
+- .NET SDK (to build the Harmony mod under `Source/`)
+- A DashScope API key for the Qwen-based overseer/reporter agents
 
 ---
 
 ## Install
 
 ```bash
-# 1. Clone this repo and rimworld-tcp side-by-side
-git clone <this-repo>          rimworld-frontier
-git clone <agent-repo>         rimworld-tcp
+# 1. Clone this repo
+git clone <this-repo> rimworld-frontier
+cd rimworld-frontier
 
 # 2. Install Python deps
-cd rimworld-frontier
-pip install -r requirements.txt    # if a requirements.txt is present
-                                   # (otherwise: openai, anthropic)
+pip install openai anthropic
 
-# 3. Set your API key
+# 3. Build and install the Harmony mod
+cd Source && dotnet build -c Release && cd ..
+# Copy Source/bin/Release/CarolineConsole.dll into your RimWorld Mods/CarolineConsole/Assemblies/
+# (see CLAUDE.md for the platform-specific paths)
+
+# 4. Set your API key
 export DASHSCOPE_API_KEY=sk-...
-
-# 4. (Optional) Override agent repo location
-export AGENT_REPO=/path/to/rimworld-tcp
 ```
 
 Verify by running the bundled example:
@@ -194,7 +193,7 @@ python3 frontier/list_runs.py <name>
 
 ## How it works (one paragraph)
 
-`runner.sh` orchestrates phases for one scenario: it generates a save (via `rimworld-tcp`'s `savegen.py`), loads it into a running RimWorld instance, snapshots colony state, kicks off a 5-second-interval telemetry monitor, spawns the **overseer agent** (driven by `rimworld-tcp/AGENT_OVERSEER.md` plus your `mission_description`) to play the game for up to ~22 minutes wall-clock or 5 in-game days, snapshots final state, evaluates `pass_criteria` deterministically, then spawns the **reporter agent** to write `playtest_report.md` from the artifacts. `playtest.sh` just runs `runner.sh` per scenario in a list and prints a summary table.
+`runner.sh` orchestrates phases for one scenario: it generates a save (via `tools/savegen.py`), loads it into a running RimWorld instance, snapshots colony state, kicks off a 5-second-interval telemetry monitor, spawns the **overseer agent** (driven by `AGENT_OVERSEER.md` plus your `mission_description`) to play the game for up to ~22 minutes wall-clock or 5 in-game days, snapshots final state, evaluates `pass_criteria` deterministically, then spawns the **reporter agent** to write `playtest_report.md` from the artifacts. `playtest.sh` just runs `runner.sh` per scenario in a list and prints a summary table.
 
 For more architectural detail, see `CLAUDE.md`.
 
@@ -202,7 +201,6 @@ For more architectural detail, see `CLAUDE.md`.
 
 ## Troubleshooting
 
-- **"AGENT_REPO not found"** — set `export AGENT_REPO=/absolute/path/to/rimworld-tcp`, or place the two repos as siblings.
 - **"DASHSCOPE_API_KEY not set"** — required for the Qwen-based agents. Get one from Alibaba Cloud DashScope.
 - **Agent runs but does nothing useful** — check `overseer_conversation.txt` for the agent's reasoning. It may have hit an SDK error early.
 - **Scenario fails with "TODO" in mission_description** — you forgot to fill in the scaffold. Edit the JSON.
@@ -229,7 +227,17 @@ agents/
   run_reporter.sh       reporter agent invocation
   score_monitor.py      background telemetry monitor
 
+sdk/                    Python SDK — RimClient, snapshot, scoring
+tools/                  savegen.py (custom .rws builder), read_state.py
+skills/                 Pre-built scripts the overseer invokes
+schema/                 commands.json (machine-readable protocol)
+wiki/                   RimWorld game knowledge (QMD-indexed)
+Source/                 C# Harmony mod (build with dotnet)
+About/                  RimWorld mod metadata
+
+AGENT_OVERSEER.md       overseer agent prompt (the one driving gameplay)
 AGENT_REPORTER.md       reporter agent prompt
+REFERENCE_*.md          SDK/wiki/RimWorld reference docs
 config.sh               environment paths + model assignments
 CLAUDE.md               architecture summary for Claude Code agents
 ```

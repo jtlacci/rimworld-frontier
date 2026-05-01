@@ -4,24 +4,12 @@
 Usage: python3 agents/score_monitor.py <run_dir> [interval_seconds]
 
 Runs until killed. Writes score_timeline.jsonl to the run directory.
-Requires AGENT_REPO env var to find the SDK.
 """
 import sys, json, time, os
 
-# Resolve agent repo for SDK imports
-agent_repo = os.environ.get("AGENT_REPO")
-if not agent_repo:
-    # Fallback: try sibling directory
-    frontier_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for candidate in [os.path.join(frontier_root, '..', 'rimworld-tcp'),
-                      os.path.join(frontier_root, '..', 'rimworld-agent')]:
-        if os.path.isdir(os.path.join(candidate, 'sdk')):
-            agent_repo = os.path.abspath(candidate)
-            break
-if agent_repo:
-    sys.path.insert(0, os.path.join(agent_repo, 'sdk'))
-else:
-    sys.stderr.write("WARNING: AGENT_REPO not set, SDK imports may fail\n")
+# sdk/ lives at the repo root alongside agents/
+_repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_repo_root, 'sdk'))
 
 run_dir = sys.argv[1]
 interval = int(sys.argv[2]) if len(sys.argv) > 2 else 30

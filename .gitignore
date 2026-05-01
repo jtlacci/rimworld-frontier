@@ -6,3 +6,10 @@ frontier/logs/*.log
 frontier/logs/.last_check
 token_usage.jsonl
 .context/
+
+# C# Harmony mod build artifacts
+Source/bin/
+Source/obj/
+*.user
+*.suo
+.vs/

@@ -1,0 +1,1671 @@
+{
+  "$schema": "rimworld-tcp-commands-v1",
+  "commands": {
+    "ping": {
+      "category": "read",
+      "description": "Health check. Returns game status, map presence, colonist count, speed, and timestamp.",
+      "handler": "ReadCommands.Ping",
+      "sdk_method": "ping",
+      "params": {},
+      "returns": {
+        "status": "str ('pong')",
+        "game": "str ('running' | 'no_game')",
+        "map": "bool",
+        "time": "str (yyyy-MM-dd HH:mm:ss)",
+        "colonists": "int (if map loaded)",
+        "speed": "int (if map loaded)"
+      }
+    },
+    "read_colonists": {
+      "category": "read",
+      "description": "Get detailed info on all free colonists: name, position, health, mood, job, backstories, traits, disabled work, and skills.",
+      "handler": "ReadCommands.Colonists",
+      "sdk_method": "colonists",
+      "params": {},
+      "returns": {
+        "colonists": "[{name, position: {x, z}, health, mood, currentJob, mentalState, isDrafted, childhood, childhoodDesc, adulthood, adulthoodDesc, traits: [{name, description}], disabledWork, skills: [{name, level, passion}]}]"
+      }
+    },
+    "read_resources": {
+      "category": "read",
+      "description": "Get colony resource counts (all ThingDefs with count > 0).",
+      "handler": "ReadCommands.Resources",
+      "sdk_method": "resources",
+      "params": {},
+      "returns": {
+        "<defName>": "int (count for each resource with count > 0)"
+      }
+    },
+    "read_map": {
+      "category": "read",
+      "description": "Get basic map info: size, biome, average fertility, home cell count, season, and hour.",
+      "handler": "ReadCommands.Map",
+      "sdk_method": "map_info",
+      "params": {},
+      "returns": {
+        "size": "{x, z}",
+        "biome": "str (defName)",
+        "avgFertility": "float",
+        "homeCells": "int",
+        "season": "str",
+        "hour": "float"
+      }
+    },
+    "read_map_tiles": {
+      "category": "read",
+      "description": "Full tile-level map snapshot. Returns base64-encoded terrain/fertility/roof/fog grids, sparse things list, and cell designations. Clamped to 50x50 per request.",
+      "handler": "ReadCommands.MapTiles",
+      "sdk_method": "scan",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound (clamped to 50-tile width)" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound (clamped to 50-tile height)" },
+        "kind": { "type": "str", "required": false, "default": null, "description": "Comma-separated thing kind filter (e.g. 'item', 'building,blueprint,frame')" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "width": "int",
+        "height": "int",
+        "terrainPalette": "[str] (defName list, index = byte value in terrain grid)",
+        "terrain": "str (base64, column-major: index = (x-x1)*height + (z-z1))",
+        "fertility": "str (base64, 0-255 = 0-100%)",
+        "roof": "str (base64, 0=none 1=thin 2=thick)",
+        "fog": "str (base64, 0=visible 1=fogged)",
+        "things": "[{x, z, kind, def, label, ...extra per kind}]",
+        "cellDesignations": "[{x, z, def}]"
+      }
+    },
+    "read_alerts": {
+      "category": "read",
+      "description": "Get all active game alerts (e.g. 'NeedColonistBeds', 'NeedWarmClothes').",
+      "handler": "ReadCommands.Alerts",
+      "sdk_method": "alerts",
+      "params": {},
+      "returns": {
+        "alerts": "[{type, label, priority}]",
+        "totalChecked": "int"
+      }
+    },
+    "read_buildings": {
+      "category": "read",
+      "description": "Get all colony buildings (including spots) and enclosed rooms with stats.",
+      "handler": "ReadCommands.Buildings",
+      "sdk_method": "buildings",
+      "params": {},
+      "returns": {
+        "buildings": "[{def, label, position: {x, z}, hitPoints, maxHitPoints, isSpot}]",
+        "rooms": "[{role, cellCount, roofed, openRoofCount, temperature, impressiveness, beauty, cleanliness, contents: [defName], flooredPct, bounds: {minX, maxX, minZ, maxZ}}]"
+      }
+    },
+    "read_weather": {
+      "category": "read",
+      "description": "Get current weather, temperature, season, and time of day.",
+      "handler": "ReadCommands.Weather",
+      "sdk_method": "weather",
+      "params": {},
+      "returns": {
+        "temperature": "float",
+        "condition": "str (defName)",
+        "season": "str",
+        "dayOfYear": "int",
+        "dayOfSeason": "int",
+        "hour": "float"
+      }
+    },
+    "read_research": {
+      "category": "read",
+      "description": "Get current research project, progress, completed list, and available projects.",
+      "handler": "ReadCommands.Research",
+      "sdk_method": "research",
+      "params": {},
+      "returns": {
+        "current": "str|null (defName)",
+        "currentProgress": "float (0-1)",
+        "completed": "[str (defName)]",
+        "available": "[{def, label, cost, progress}]"
+      }
+    },
+    "read_zones": {
+      "category": "read",
+      "description": "Get all zones with type, label, cell count, bounds, and type-specific data (plant for grow zones, priority for stockpiles).",
+      "handler": "ReadCommands.Zones",
+      "sdk_method": "zones",
+      "params": {},
+      "returns": {
+        "zones": "[{type, label, cellCount, bounds: {minX, maxX, minZ, maxZ}, plant?: str, priority?: str}]"
+      }
+    },
+    "read_bills": {
+      "category": "read",
+      "description": "Get all workbenches and their bill queues.",
+      "handler": "ReadCommands.Bills",
+      "sdk_method": "bills",
+      "params": {},
+      "returns": {
+        "workbenches": "[{def, label, position: {x, z}, bills: [{index, recipe, label, suspended}]}]"
+      }
+    },
+    "read_threats": {
+      "category": "read",
+      "description": "Get all hostile pawns and active fires on the map.",
+      "handler": "ReadCommands.Threats",
+      "sdk_method": "threats",
+      "params": {},
+      "returns": {
+        "threats": "[{type: 'hostile'|'fire', name?, kind?, faction?, position: {x, z}, health?, downed?}]"
+      }
+    },
+    "read_work_priorities": {
+      "category": "read",
+      "description": "Get work priority settings for all colonists (by WorkTypeDef, -1 = disabled).",
+      "handler": "ReadCommands.WorkPriorities",
+      "sdk_method": "work_priorities",
+      "params": {},
+      "returns": {
+        "colonists": "[{name, priorities: {<WorkTypeDef>: int}}]"
+      }
+    },
+    "read_animals": {
+      "category": "read",
+      "description": "Get all animals on the map with tame/bonded/downed status.",
+      "handler": "ReadCommands.Animals",
+      "sdk_method": "animals",
+      "params": {},
+      "returns": {
+        "animals": "[{name, kind, position: {x, z}, health, tame, bonded, downed}]"
+      }
+    },
+    "read_pawns": {
+      "category": "read",
+      "description": "Get overview of all pawns: colonists (with draft status), prisoners, guests, plus hostile/animal counts.",
+      "handler": "ReadCommands.Pawns",
+      "sdk_method": "pawns",
+      "params": {},
+      "returns": {
+        "colonists": "[{name, position: {x, z}, health, drafted}]",
+        "prisoners": "[{name, position: {x, z}, health}]",
+        "guests": "[{name, faction, position: {x, z}}]",
+        "hostile_count": "int",
+        "animal_count": "int"
+      }
+    },
+    "read_needs": {
+      "category": "read",
+      "description": "Get all needs for a specific pawn.",
+      "handler": "ReadCommands.Needs",
+      "sdk_method": "needs",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Pawn name (short or full)" }
+      },
+      "returns": {
+        "needs": "[{name, label, level}]"
+      }
+    },
+    "read_inventory": {
+      "category": "read",
+      "description": "Get a pawn's equipment, worn apparel, and carried inventory.",
+      "handler": "ReadCommands.Inventory",
+      "sdk_method": "inventory",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Pawn name (short or full)" }
+      },
+      "returns": {
+        "equipment": "[{def, label, hp, maxHp}]",
+        "apparel": "[{def, label, hp, maxHp}]",
+        "inventory": "[{def, label, count}]"
+      }
+    },
+    "read_colonist_needs": {
+      "category": "read",
+      "description": "Get mood/food/rest/joy/beauty/comfort levels for all colonists.",
+      "handler": "ReadCommands.ColonistNeeds",
+      "sdk_method": "colonist_needs",
+      "params": {},
+      "returns": {
+        "colonists": "[{name, mood, food, rest, joy, beauty, comfort}]"
+      }
+    },
+    "read_thoughts": {
+      "category": "read",
+      "description": "Get all mood thoughts for a specific pawn with mood offset and duration.",
+      "handler": "ReadCommands.Thoughts",
+      "sdk_method": "thoughts",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Pawn name (short or full)" }
+      },
+      "returns": {
+        "thoughts": "[{label, mood, daysLeft}]"
+      }
+    },
+    "read_letters": {
+      "category": "read",
+      "description": "Get all pending letters (notifications) with index, label, type, text, and quest flag.",
+      "handler": "ReadCommands.Letters",
+      "sdk_method": "letters",
+      "params": {},
+      "returns": {
+        "letters": "[{index, label, type, def, text?, has_quest?}]"
+      }
+    },
+    "read_dialogs": {
+      "category": "read",
+      "description": "Get all open dialog windows with type, ID, and options (for Dialog_NodeTree).",
+      "handler": "ReadCommands.Dialogs",
+      "sdk_method": "dialogs",
+      "params": {},
+      "returns": {
+        "dialogs": "[{type, id, title?, text?, options?: [{text, disabled?, disabledReason?}]}]"
+      }
+    },
+    "read_beauty": {
+      "category": "read",
+      "description": "Read per-cell beauty values in a region (max 50x50). Returns average and non-zero cells.",
+      "handler": "ReadCommands.Beauty",
+      "sdk_method": "beauty",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1+10", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1+10", "description": "Bottom bound" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "avg": "float",
+        "cells": "[{x, z, b}] (only non-zero beauty cells)"
+      }
+    },
+    "read_messages": {
+      "category": "read",
+      "description": "Read live top-of-screen messages (e.g. 'food rotted', 'construction failed').",
+      "handler": "ReadCommands.LiveMessages",
+      "sdk_method": "messages",
+      "params": {},
+      "returns": {
+        "messages": "[{text, age}] (age in game-seconds)"
+      }
+    },
+    "read_terrain": {
+      "category": "read",
+      "description": "Read terrain data for a region (max 50x50). Returns per-cell terrain defName, fertility, water, and rock flags.",
+      "handler": "ReadCommands.Terrain",
+      "sdk_method": "terrain",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1", "description": "Bottom bound" }
+      },
+      "returns": {
+        "cells": "[{x, z, terrain, fertility, isWater, isRock}]"
+      }
+    },
+    "read_roof": {
+      "category": "read",
+      "description": "Read roof status for a region (max 50x50).",
+      "handler": "ReadCommands.Roof",
+      "sdk_method": "roof",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1", "description": "Bottom bound" }
+      },
+      "returns": {
+        "cells": "[{x, z, roof}] (roof is defName or null)"
+      }
+    },
+    "read_costs": {
+      "category": "read",
+      "description": "Get material costs and work amount for a building defName.",
+      "handler": "ReadCommands.Costs",
+      "sdk_method": "costs",
+      "params": {
+        "blueprint": { "type": "str", "required": true, "description": "ThingDef defName of the building" },
+        "stuff": { "type": "str", "required": false, "default": null, "description": "Stuff material defName (auto-picks default if building requires stuff)" }
+      },
+      "returns": {
+        "costs": "[{defName, count}]",
+        "workAmount": "float"
+      }
+    },
+    "read_interaction_spots": {
+      "category": "read",
+      "description": "Get interaction cells for buildings in a region. Useful for checking clearance before building.",
+      "handler": "ReadCommands.InteractionSpots",
+      "sdk_method": "interaction_spots",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1+10", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1+10", "description": "Bottom bound" }
+      },
+      "returns": {
+        "spots": "[{building, bx, bz, ix, iz}]"
+      }
+    },
+    "read_ideology": {
+      "category": "read",
+      "description": "Read ideology info: name, memes, roles and their assignments. Requires Ideology DLC.",
+      "handler": "ReadCommands.Ideology",
+      "sdk_method": "ideology",
+      "params": {},
+      "returns": {
+        "active": "bool",
+        "name": "str",
+        "roles": "[{defName, label, assigned: [{name, fullName}], maxCount, requirements: [str]}]",
+        "memes": "[{defName, label, description}]"
+      }
+    },
+    "read_visitors": {
+      "category": "read",
+      "description": "Read visitors and traders on map, plus incoming caravans.",
+      "handler": "ReadCommands.Visitors",
+      "sdk_method": "visitors",
+      "params": {},
+      "returns": {
+        "visitors": "[{faction, count, isTrader, traderName?, traderKind?, goods?: [{def, label, count, value}], pawns: [{name, position: {x,z}, isTrader}]}]",
+        "caravans": "[{faction, pawnCount, tile, destTile, arriving}]"
+      }
+    },
+    "read_colony_stats": {
+      "category": "read",
+      "description": "Colony wealth breakdown, average beauty, room impressiveness summary.",
+      "handler": "ReadCommands.ColonyStats",
+      "sdk_method": "colony_stats",
+      "params": {},
+      "returns": {
+        "wealth_total": "float",
+        "wealth_items": "float",
+        "wealth_buildings": "float",
+        "wealth_floors": "float",
+        "wealth_pawns": "float",
+        "avg_beauty": "float",
+        "rooms": "[{role, impressiveness, beauty, cells, roofed, temperature}]",
+        "avg_impressiveness": "float"
+      }
+    },
+    "read_plants": {
+      "category": "read",
+      "description": "Returns harvestable plants on the map (berry bushes, mature crops, etc.).",
+      "handler": "ReadCommands.Plants",
+      "sdk_method": "plants",
+      "params": {
+        "filter": { "type": "str", "required": false, "description": "Comma-separated defNames to filter (e.g. 'Plant_Berry')" }
+      },
+      "returns": {
+        "plants": "[{def, position, growth, harvestable, yieldDef, yieldCount}]",
+        "count": "int"
+      }
+    },
+    "read_food_log": {
+      "category": "read",
+      "description": "Returns recent food consumption events from the in-memory ring buffer (last 50). Always active.",
+      "handler": "ReadCommands.FoodLog",
+      "sdk_method": "food_log",
+      "params": {},
+      "returns": {
+        "events": "[{tick, hour, pawn, food, nutrition, foodNeedBefore}]",
+        "count": "int"
+      }
+    },
+    "read_water": {
+      "category": "read",
+      "description": "Find water bodies on the map. Clusters water cells into bodies (river/lake/marsh). Alias for find_water.",
+      "handler": "WriteCommands.FindWater",
+      "sdk_method": "find_water",
+      "params": {},
+      "returns": {
+        "bodies": "[{type: 'river'|'lake'|'marsh', direction: 'N-S'|'E-W'|null, bounds: [x1,z1,x2,z2], cell_count}]",
+        "total_water_cells": "int"
+      }
+    },
+    "read_grow_spot": {
+      "category": "read",
+      "description": "Find the best contiguous growable rectangle near a point. Alias for find_grow_spot.",
+      "handler": "WriteCommands.FindGrowSpot",
+      "sdk_method": "find_grow_spot",
+      "params": {
+        "size": { "type": "int", "required": false, "default": "12", "description": "Side length of square to find" },
+        "radius": { "type": "int", "required": false, "default": "80", "description": "Search radius from center" },
+        "cx": { "type": "int", "required": false, "default": "map center x", "description": "Center x" },
+        "cz": { "type": "int", "required": false, "default": "map center z", "description": "Center z" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "cells": "int"
+      }
+    },
+    "find_water": {
+      "category": "read",
+      "description": "Find water bodies on the map. Clusters water cells into bodies (river/lake/marsh).",
+      "handler": "WriteCommands.FindWater",
+      "sdk_method": "find_water",
+      "params": {},
+      "returns": {
+        "bodies": "[{type: 'river'|'lake'|'marsh', direction: 'N-S'|'E-W'|null, bounds: [x1,z1,x2,z2], cell_count}]",
+        "total_water_cells": "int"
+      }
+    },
+    "find_grow_spot": {
+      "category": "read",
+      "description": "Find the best contiguous growable rectangle near a point.",
+      "handler": "WriteCommands.FindGrowSpot",
+      "sdk_method": "find_grow_spot",
+      "params": {
+        "size": { "type": "int", "required": false, "default": "12", "description": "Side length of square to find" },
+        "radius": { "type": "int", "required": false, "default": "80", "description": "Search radius from center" },
+        "cx": { "type": "int", "required": false, "default": "map center x", "description": "Center x" },
+        "cz": { "type": "int", "required": false, "default": "map center z", "description": "Center z" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "cells": "int"
+      }
+    },
+    "find_clear_rect": {
+      "category": "read",
+      "description": "Find a clear rectangular area for building (no rock, water, or existing buildings). Returns closest to center.",
+      "handler": "WriteCommands.FindClearRect",
+      "sdk_method": "find_clear_rect",
+      "params": {
+        "width": { "type": "int", "required": false, "default": "9", "description": "Rectangle width" },
+        "height": { "type": "int", "required": false, "default": "7", "description": "Rectangle height" },
+        "radius": { "type": "int", "required": false, "default": "30", "description": "Search radius from center" },
+        "cx": { "type": "int", "required": false, "default": "map center x", "description": "Center x" },
+        "cz": { "type": "int", "required": false, "default": "map center z", "description": "Center z" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int"
+      }
+    },
+    "survey_region": {
+      "category": "read",
+      "description": "Statistical summary of a map region: terrain counts, water/rock/buildable tiles, avg fertility, roof breakdown, thing counts.",
+      "handler": "ReadCommands.SurveyRegion",
+      "sdk_method": "survey_region",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "total_tiles": "int",
+        "terrain_counts": "{<defName>: int}",
+        "water_tiles": "int",
+        "rock_tiles": "int",
+        "buildable_tiles": "int",
+        "avg_fertility": "float",
+        "rich_soil_tiles": "int",
+        "roof": "{open, thin, overhead}",
+        "thing_counts": "{tree, chunk, building, plant, item, pawn}"
+      }
+    },
+    "survey_terrain_ascii": {
+      "category": "read",
+      "description": "ASCII grid of terrain types. scale>1 downsamples (majority vote per block).",
+      "handler": "ReadCommands.SurveyTerrainAscii",
+      "sdk_method": "survey_terrain_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor (each char = scale x scale block)" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str] (list of row strings)",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_roof_ascii": {
+      "category": "read",
+      "description": "ASCII grid of roof coverage (open sky, thin roof, overhead mountain).",
+      "handler": "ReadCommands.SurveyRoofAscii",
+      "sdk_method": "survey_roof_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_fertility_ascii": {
+      "category": "read",
+      "description": "ASCII grid of soil fertility levels.",
+      "handler": "ReadCommands.SurveyFertilityAscii",
+      "sdk_method": "survey_fertility_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_things_ascii": {
+      "category": "read",
+      "description": "ASCII grid of things (buildings, items, pawns, plants). Highest-priority thing per cell wins.",
+      "handler": "ReadCommands.SurveyThingsAscii",
+      "sdk_method": "survey_things_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_composite_ascii": {
+      "category": "read",
+      "description": "ASCII grid overlaying things on terrain. Things override terrain when present.",
+      "handler": "ReadCommands.SurveyCompositeAscii",
+      "sdk_method": "survey_composite_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_detailed_ascii": {
+      "category": "read",
+      "description": "Richly detailed ASCII grid with named entities, zone overlays, item types, and furniture detail. Includes entity legend with positions.",
+      "handler": "ReadCommands.SurveyDetailedAscii",
+      "sdk_method": "survey_detailed_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "entities": "[{type, char, name, x, z, job?, tame?}]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_beauty_ascii": {
+      "category": "read",
+      "description": "ASCII grid of beauty levels (very ugly to gorgeous).",
+      "handler": "ReadCommands.SurveyBeautyAscii",
+      "sdk_method": "survey_beauty_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_temperature_ascii": {
+      "category": "read",
+      "description": "ASCII grid of temperature zones (freezing to hot).",
+      "handler": "ReadCommands.SurveyTemperatureAscii",
+      "sdk_method": "survey_temperature_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_blueprint_ascii": {
+      "category": "read",
+      "description": "ASCII grid showing construction progress: built walls/doors, blueprints, and frames.",
+      "handler": "ReadCommands.SurveyBlueprintAscii",
+      "sdk_method": "survey_blueprint_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_power_ascii": {
+      "category": "read",
+      "description": "ASCII grid of power infrastructure: generators, consumers, batteries, conduits.",
+      "handler": "ReadCommands.SurveyPowerAscii",
+      "sdk_method": "survey_power_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "survey_task_ascii": {
+      "category": "read",
+      "description": "ASCII grid of active designations/tasks: mine, chop, harvest, hunt, haul, deconstruct, etc.",
+      "handler": "ReadCommands.SurveyTaskAscii",
+      "sdk_method": "survey_task_ascii",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "map width - 1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "map height - 1", "description": "Bottom bound" },
+        "scale": { "type": "int", "required": false, "default": "1", "description": "Downsample factor" }
+      },
+      "returns": {
+        "x1": "int",
+        "z1": "int",
+        "x2": "int",
+        "z2": "int",
+        "scale": "int",
+        "grid": "[str]",
+        "legend": "{char: description}"
+      }
+    },
+    "set_priority": {
+      "category": "write",
+      "description": "Set a colonist's work type priority (1=highest, 4=lowest, 0=disabled).",
+      "handler": "WriteCommands.SetPriority",
+      "sdk_method": "set_priority",
+      "params": {
+        "colonist": { "type": "str", "required": true, "description": "Colonist name (short or full)" },
+        "work": { "type": "str", "required": true, "description": "WorkTypeDef defName (e.g. 'Construction', 'Hauling')" },
+        "priority": { "type": "int", "required": false, "default": "3", "description": "Priority level (0=disabled, 1-4)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "colonist": "str",
+        "work": "str",
+        "priority": "int"
+      }
+    },
+    "set_schedule": {
+      "category": "write",
+      "description": "Set a colonist's 24-hour schedule. Array of 24 entries: 'sleep', 'work', 'joy'/'recreation', or 'anything'.",
+      "handler": "WriteCommands.SetSchedule",
+      "sdk_method": "set_schedule",
+      "params": {
+        "colonist": { "type": "str", "required": true, "description": "Colonist name" },
+        "schedule": { "type": "list", "required": true, "description": "Array of 24 strings: 'sleep'|'work'|'joy'|'recreation'|'anything'" }
+      },
+      "returns": {
+        "ok": "bool",
+        "colonist": "str"
+      }
+    },
+    "set_speed": {
+      "category": "write",
+      "description": "Set game speed (0=paused, 1=normal, 2=fast, 3=superfast, 4=ultrafast).",
+      "handler": "WriteCommands.SetSpeed",
+      "sdk_method": "speed",
+      "params": {
+        "speed": { "type": "int", "required": false, "default": "1", "description": "Speed level 0-4" }
+      },
+      "returns": {
+        "ok": "bool",
+        "speed": "int"
+      }
+    },
+    "draft": {
+      "category": "write",
+      "description": "Draft a colonist (enable direct control for combat/movement).",
+      "handler": "WriteCommands.Draft",
+      "sdk_method": "draft",
+      "params": {
+        "colonist": { "type": "str", "required": true, "description": "Colonist name" }
+      },
+      "returns": {
+        "ok": "bool",
+        "colonist": "str",
+        "drafted": "bool (true)"
+      }
+    },
+    "undraft": {
+      "category": "write",
+      "description": "Undraft a colonist (return to autonomous work).",
+      "handler": "WriteCommands.Undraft",
+      "sdk_method": "undraft",
+      "params": {
+        "colonist": { "type": "str", "required": true, "description": "Colonist name" }
+      },
+      "returns": {
+        "ok": "bool",
+        "colonist": "str",
+        "drafted": "bool (false)"
+      }
+    },
+    "add_bill": {
+      "category": "write",
+      "description": "Add a production bill to a workbench. Supports position targeting and broadcasting to all matching workbenches.",
+      "handler": "WriteCommands.AddBill",
+      "sdk_method": "add_bill",
+      "params": {
+        "workbench": { "type": "str", "required": true, "description": "Workbench label or defName" },
+        "recipe": { "type": "str", "required": true, "description": "Recipe defName (e.g. 'CookMealSimple')" },
+        "count": { "type": "int", "required": false, "default": "-1", "description": "Repeat count (-1 = forever)" },
+        "x": { "type": "int", "required": false, "description": "Target workbench at this x position" },
+        "z": { "type": "int", "required": false, "description": "Target workbench at this z position" },
+        "target_all": { "type": "bool", "required": false, "default": "false", "description": "If true, add bill to ALL matching workbenches" }
+      },
+      "returns": {
+        "ok": "bool",
+        "results": "list of {workbench, x, z, ok}",
+        "count": "int"
+      }
+    },
+    "cancel_bill": {
+      "category": "write",
+      "description": "Remove a bill from a workbench by index.",
+      "handler": "WriteCommands.CancelBill",
+      "sdk_method": "cancel_bill",
+      "params": {
+        "workbench": { "type": "str", "required": true, "description": "Workbench label or defName" },
+        "billIndex": { "type": "int", "required": false, "default": "0", "description": "Index of bill to remove" }
+      },
+      "returns": {
+        "ok": "bool",
+        "workbench": "str",
+        "removedIndex": "int"
+      }
+    },
+    "suspend_bill": {
+      "category": "write",
+      "description": "Suspend or unsuspend a bill on a workbench.",
+      "handler": "WriteCommands.SuspendBill",
+      "sdk_method": "suspend_bill",
+      "params": {
+        "workbench": { "type": "str", "required": true, "description": "Workbench label or defName" },
+        "billIndex": { "type": "int", "required": false, "default": "0", "description": "Index of bill" },
+        "suspended": { "type": "bool", "required": false, "default": "true", "description": "Whether to suspend (true) or unsuspend (false)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "workbench": "str",
+        "billIndex": "int",
+        "suspended": "bool"
+      }
+    },
+    "build": {
+      "category": "write",
+      "description": "Place a building blueprint (or instant-place for no-cost items like spots). Validates placement against rock, water, impassable buildings, and interaction spots.",
+      "handler": "WriteCommands.Build",
+      "sdk_method": "build",
+      "params": {
+        "blueprint": { "type": "str", "required": true, "description": "ThingDef defName (e.g. 'Wall', 'Door', 'Bed')" },
+        "x": { "type": "int", "required": true, "description": "X coordinate" },
+        "y": { "type": "int", "required": true, "description": "Z coordinate (wire name is 'y' for historical reasons)" },
+        "rotation": { "type": "int", "required": false, "default": "0", "description": "Rot4 value (0=North, 1=East, 2=South, 3=West)" },
+        "stuff": { "type": "str", "required": false, "default": null, "description": "Stuff material defName (auto-picks default if required)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "blueprint": "str",
+        "x": "int",
+        "y": "int",
+        "stuff": "str|null",
+        "instant": "bool (true for no-cost items)",
+        "warning": "str (if under overhead mountain)"
+      }
+    },
+    "cancel_build": {
+      "category": "write",
+      "description": "Cancel a blueprint or frame at a position.",
+      "handler": "WriteCommands.CancelBuild",
+      "sdk_method": "cancel_build",
+      "params": {
+        "x": { "type": "int", "required": true, "description": "X coordinate" },
+        "y": { "type": "int", "required": true, "description": "Z coordinate (wire name is 'y')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "x": "int",
+        "y": "int"
+      }
+    },
+    "bulk_build": {
+      "category": "write",
+      "description": "Place multiple building blueprints in one request. Each op uses same params as 'build'. Continues on per-op errors.",
+      "handler": "WriteCommands.BulkBuild",
+      "sdk_method": "bulk_build",
+      "params": {
+        "ops": { "type": "list", "required": true, "description": "List of build op dicts [{blueprint, x, y, stuff?, rotation?}]" }
+      },
+      "returns": {
+        "results": "[{ok: bool, ...build_result} | {error: str, x, y, cells?}]"
+      }
+    },
+    "set_floor": {
+      "category": "write",
+      "description": "Designate floor placement over a rectangle (or single tile). Skips cells that already match.",
+      "handler": "WriteCommands.SetFloor",
+      "sdk_method": "floor",
+      "params": {
+        "floor": { "type": "str", "required": true, "description": "TerrainDef defName or label (e.g. 'WoodPlankFloor', 'FlagstoneGranite')" },
+        "x1": { "type": "int", "required": true, "description": "Left/single x (also accepts 'x')" },
+        "z1": { "type": "int", "required": true, "description": "Top/single z (also accepts 'z')" },
+        "x2": { "type": "int", "required": false, "default": "x1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1", "description": "Bottom bound" },
+        "stuff": { "type": "str", "required": false, "default": null, "description": "Stuff material defName" }
+      },
+      "returns": {
+        "ok": "bool",
+        "floor": "str",
+        "placed": "int",
+        "skipped": "int"
+      }
+    },
+    "hunt": {
+      "category": "write",
+      "description": "Designate up to 5 animals of a species for hunting. Skips tame animals.",
+      "handler": "WriteCommands.Hunt",
+      "sdk_method": "hunt",
+      "params": {
+        "animal": { "type": "str", "required": true, "description": "Animal defName (e.g. 'Deer', 'Muffalo')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "designated": "int",
+        "animal": "str",
+        "targets": "str (comma-separated names)"
+      }
+    },
+    "designate_chop": {
+      "category": "write",
+      "description": "Designate all trees within radius of a point for chopping.",
+      "handler": "WriteCommands.DesignateChop",
+      "sdk_method": "chop",
+      "params": {
+        "x": { "type": "int", "required": true, "description": "Center x" },
+        "z": { "type": "int", "required": true, "description": "Center z" },
+        "radius": { "type": "int", "required": false, "default": "20", "description": "Search radius (0 = entire map)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "designated": "int"
+      }
+    },
+    "designate_harvest": {
+      "category": "write",
+      "description": "Designate harvestable non-tree plants within radius for harvesting. Optional defName filter.",
+      "handler": "WriteCommands.DesignateHarvest",
+      "sdk_method": "harvest",
+      "params": {
+        "x": { "type": "int", "required": true, "description": "Center x" },
+        "z": { "type": "int", "required": true, "description": "Center z" },
+        "radius": { "type": "int", "required": false, "default": "20", "description": "Search radius (0 = entire map)" },
+        "def": { "type": "str", "required": false, "default": null, "description": "Comma-separated defName filter (e.g. 'Plant_Berry,Plant_HealrootWild')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "designated": "int"
+      }
+    },
+    "designate_mine": {
+      "category": "write",
+      "description": "Designate mineable rock in a rectangle for mining.",
+      "handler": "WriteCommands.DesignateMine",
+      "sdk_method": "mine",
+      "params": {
+        "x1": { "type": "int", "required": false, "default": "0", "description": "Left bound" },
+        "z1": { "type": "int", "required": false, "default": "0", "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1+10", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1+10", "description": "Bottom bound" }
+      },
+      "returns": {
+        "ok": "bool",
+        "designated": "int"
+      }
+    },
+    "create_grow_zone": {
+      "category": "write",
+      "description": "Create a growing zone in a rectangle. Skips cells with no fertility, water, overhead mountain, impassable things, or existing zones.",
+      "handler": "WriteCommands.CreateGrowZone",
+      "sdk_method": "grow_zone",
+      "params": {
+        "x1": { "type": "int", "required": true, "description": "Left bound" },
+        "z1": { "type": "int", "required": true, "description": "Top bound" },
+        "x2": { "type": "int", "required": true, "description": "Right bound" },
+        "z2": { "type": "int", "required": true, "description": "Bottom bound" },
+        "plant": { "type": "str", "required": false, "default": "PlantPotato", "description": "Plant ThingDef defName to grow" }
+      },
+      "returns": {
+        "ok": "bool",
+        "cells": "int",
+        "skipped": "int",
+        "plant": "str"
+      }
+    },
+    "create_stockpile_zone": {
+      "category": "write",
+      "description": "Create a stockpile zone in a rectangle. Steals cells from existing zones if needed.",
+      "handler": "WriteCommands.CreateStockpileZone",
+      "sdk_method": "stockpile",
+      "params": {
+        "x1": { "type": "int", "required": true, "description": "Left bound" },
+        "z1": { "type": "int", "required": true, "description": "Top bound" },
+        "x2": { "type": "int", "required": true, "description": "Right bound" },
+        "z2": { "type": "int", "required": true, "description": "Bottom bound" },
+        "priority": { "type": "str", "required": false, "default": "Normal", "description": "StoragePriority enum value (Low, Normal, Preferred, Important, Critical)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "cells": "int",
+        "skipped": "int",
+        "priority": "str",
+        "label": "str"
+      }
+    },
+    "create_fishing_zone": {
+      "category": "write",
+      "description": "Create a fishing zone on water cells (requires fishing mod). Skips non-water and already-zoned cells.",
+      "handler": "WriteCommands.CreateFishingZone",
+      "sdk_method": "fishing_zone",
+      "params": {
+        "x1": { "type": "int", "required": true, "description": "Left bound" },
+        "z1": { "type": "int", "required": true, "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1", "description": "Bottom bound" }
+      },
+      "returns": {
+        "ok": "bool",
+        "type": "str (zone type name)",
+        "cells": "int",
+        "skipped": "int",
+        "label": "str"
+      }
+    },
+    "seed_fish": {
+      "category": "write",
+      "description": "Seed fish population in a water body (Odyssey DLC). Sets population count and enables fish spawning.",
+      "handler": "WriteCommands.SeedFish",
+      "sdk_method": null,
+      "params": {
+        "x": { "type": "int", "required": true, "description": "X of a water cell in the target body" },
+        "z": { "type": "int", "required": true, "description": "Z of a water cell in the target body" },
+        "population": { "type": "int", "required": false, "default": "100", "description": "Fish population to set" }
+      },
+      "returns": {
+        "ok": "bool",
+        "population": "float",
+        "shouldHaveFish": "bool",
+        "cellCount": "int",
+        "cell": "str"
+      }
+    },
+    "pause": {
+      "category": "write",
+      "description": "Pause the game (set speed to 0).",
+      "handler": "WriteCommands.Pause",
+      "sdk_method": "pause",
+      "params": {},
+      "returns": {
+        "ok": "bool",
+        "paused": "bool (true)"
+      }
+    },
+    "unpause": {
+      "category": "write",
+      "description": "Unpause the game. Defaults to ultrafast speed. Also auto-dismisses ImmediateWindow dialogs.",
+      "handler": "WriteCommands.Unpause",
+      "sdk_method": "unpause",
+      "params": {
+        "speed": { "type": "int", "required": false, "default": "4", "description": "Speed to set (1-4, default 4=ultrafast)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "paused": "bool (false)",
+        "speed": "int",
+        "dialogs_dismissed": "int"
+      }
+    },
+    "save": {
+      "category": "write",
+      "description": "Save the current game.",
+      "handler": "WriteCommands.Save",
+      "sdk_method": "save",
+      "params": {
+        "name": { "type": "str", "required": false, "default": null, "description": "Save file name (defaults to permadeath name or 'CarolineSave')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "saved": "bool"
+      }
+    },
+    "load_game": {
+      "category": "write",
+      "description": "Load a save file. Queued asynchronously via LongEventHandler -- TCP connection will drop.",
+      "handler": "WriteCommands.LoadGame",
+      "sdk_method": "load_game",
+      "params": {
+        "name": { "type": "str", "required": true, "description": "Save file name without .rws extension" }
+      },
+      "returns": {
+        "ok": "bool",
+        "loading": "str"
+      }
+    },
+    "list_saves": {
+      "category": "read",
+      "description": "List all .rws save files, sorted by last modified descending.",
+      "handler": "WriteCommands.ListSaves",
+      "sdk_method": "list_saves",
+      "params": {},
+      "returns": {
+        "saves": "[{name, modified, size_mb}]"
+      }
+    },
+    "move_pawn": {
+      "category": "write",
+      "description": "Order a drafted pawn to move to a position (Goto job).",
+      "handler": "WriteCommands.MovePawn",
+      "sdk_method": "move_pawn",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Pawn name" },
+        "x": { "type": "int", "required": true, "description": "Target x" },
+        "z": { "type": "int", "required": true, "description": "Target z (also accepts 'y')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "x": "int",
+        "z": "int"
+      }
+    },
+    "attack": {
+      "category": "write",
+      "description": "Order a drafted pawn to attack a target (by name or position). Uses ranged or melee based on equipped weapon.",
+      "handler": "WriteCommands.Attack",
+      "sdk_method": "attack",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Attacker pawn name" },
+        "target": { "type": "str", "required": false, "default": null, "description": "Target pawn/animal name" },
+        "x": { "type": "int", "required": false, "default": null, "description": "Target x (alternative to name)" },
+        "z": { "type": "int", "required": false, "default": null, "description": "Target z (alternative to name)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "target": "str"
+      }
+    },
+    "rescue": {
+      "category": "write",
+      "description": "Order a pawn to rescue a downed pawn and carry them to a bed.",
+      "handler": "WriteCommands.Rescue",
+      "sdk_method": "rescue",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Rescuer pawn name" },
+        "target": { "type": "str", "required": true, "description": "Downed pawn name" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "target": "str"
+      }
+    },
+    "tend": {
+      "category": "write",
+      "description": "Order a pawn to tend (provide medical care to) a target pawn. If no target, tends self.",
+      "handler": "WriteCommands.Tend",
+      "sdk_method": "tend",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Doctor pawn name" },
+        "target": { "type": "str", "required": false, "default": null, "description": "Patient pawn name (defaults to self)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "target": "str"
+      }
+    },
+    "haul": {
+      "category": "write",
+      "description": "Order a pawn to haul an item at a position to valid storage.",
+      "handler": "WriteCommands.Haul",
+      "sdk_method": "haul",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Hauler pawn name" },
+        "x": { "type": "int", "required": true, "description": "Item x position" },
+        "z": { "type": "int", "required": true, "description": "Item z position (also accepts 'y')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "item": "str"
+      }
+    },
+    "equip": {
+      "category": "write",
+      "description": "Order a pawn to equip a weapon or wear apparel. Find by position or defName.",
+      "handler": "WriteCommands.Equip",
+      "sdk_method": "equip",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Pawn name" },
+        "thing": { "type": "str", "required": false, "default": null, "description": "ThingDef defName to find on map" },
+        "x": { "type": "int", "required": false, "default": null, "description": "Item x position (alternative to thing)" },
+        "z": { "type": "int", "required": false, "default": null, "description": "Item z position" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "action": "str ('equipping' | 'wearing')",
+        "item": "str"
+      }
+    },
+    "prioritize": {
+      "category": "write",
+      "description": "Force a pawn to immediately start a job of the given work type.",
+      "handler": "WriteCommands.Prioritize",
+      "sdk_method": "prioritize",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Pawn name" },
+        "workType": { "type": "str", "required": true, "description": "WorkTypeDef defName" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "workType": "str"
+      }
+    },
+    "tame": {
+      "category": "write",
+      "description": "Designate a wild animal for taming (fuzzy match on defName/kindDef).",
+      "handler": "WriteCommands.Tame",
+      "sdk_method": "tame",
+      "params": {
+        "animal": { "type": "str", "required": true, "description": "Animal defName or partial match" }
+      },
+      "returns": {
+        "ok": "bool",
+        "animal": "str (label)",
+        "kind": "str (defName)"
+      }
+    },
+    "slaughter": {
+      "category": "write",
+      "description": "Designate a tame animal for slaughter.",
+      "handler": "WriteCommands.Slaughter",
+      "sdk_method": "slaughter",
+      "params": {
+        "animal": { "type": "str", "required": true, "description": "Animal name" }
+      },
+      "returns": {
+        "ok": "bool",
+        "animal": "str"
+      }
+    },
+    "deconstruct": {
+      "category": "write",
+      "description": "Designate a building at a position for deconstruction.",
+      "handler": "WriteCommands.Deconstruct",
+      "sdk_method": "deconstruct",
+      "params": {
+        "x": { "type": "int", "required": true, "description": "Building x" },
+        "z": { "type": "int", "required": true, "description": "Building z (also accepts 'y')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "building": "str (defName)",
+        "x": "int",
+        "z": "int"
+      }
+    },
+    "cancel_designation": {
+      "category": "write",
+      "description": "Cancel all designations at a single cell (both cell-based and thing-based).",
+      "handler": "WriteCommands.CancelDesignation",
+      "sdk_method": "cancel_designation",
+      "params": {
+        "x": { "type": "int", "required": true, "description": "Cell x" },
+        "z": { "type": "int", "required": true, "description": "Cell z (also accepts 'y')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "x": "int",
+        "z": "int"
+      }
+    },
+    "cancel_designations": {
+      "category": "write",
+      "description": "Cancel designations in a rectangular area. Optional kind filter: chop, harvest, mine, deconstruct, hunt, haul.",
+      "handler": "WriteCommands.CancelDesignations",
+      "sdk_method": "cancel_designations",
+      "params": {
+        "x1": { "type": "int", "required": true, "description": "Left bound" },
+        "z1": { "type": "int", "required": true, "description": "Top bound" },
+        "x2": { "type": "int", "required": true, "description": "Right bound" },
+        "z2": { "type": "int", "required": true, "description": "Bottom bound" },
+        "kind": { "type": "str", "required": false, "default": null, "description": "Designation kind filter: chop, harvest, mine, deconstruct, hunt, haul (null = all)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "cancelled": "int",
+        "bounds": "{x1, z1, x2, z2}",
+        "kind": "str"
+      }
+    },
+    "forbid": {
+      "category": "write",
+      "description": "Forbid items at a position, by defName, or all items on map.",
+      "handler": "WriteCommands.ForbidCmd",
+      "sdk_method": "forbid",
+      "params": {
+        "x": { "type": "int", "required": false, "default": null, "description": "Cell x (use with z)" },
+        "z": { "type": "int", "required": false, "default": null, "description": "Cell z (also accepts 'y')" },
+        "thingDef": { "type": "str", "required": false, "default": null, "description": "Forbid all items of this defName" },
+        "all": { "type": "str", "required": false, "default": null, "description": "Set to any value to forbid all items on map" }
+      },
+      "returns": {
+        "ok": "bool",
+        "count": "int",
+        "forbidden": "bool (true)"
+      }
+    },
+    "unforbid": {
+      "category": "write",
+      "description": "Unforbid items at a position, by defName, or all items on map.",
+      "handler": "WriteCommands.UnforbidCmd",
+      "sdk_method": "unforbid",
+      "params": {
+        "x": { "type": "int", "required": false, "default": null, "description": "Cell x (use with z)" },
+        "z": { "type": "int", "required": false, "default": null, "description": "Cell z (also accepts 'y')" },
+        "thingDef": { "type": "str", "required": false, "default": null, "description": "Unforbid all items of this defName" },
+        "all": { "type": "str", "required": false, "default": null, "description": "Set to any value to unforbid all items on map" }
+      },
+      "returns": {
+        "ok": "bool",
+        "count": "int",
+        "forbidden": "bool (false)"
+      }
+    },
+    "set_research": {
+      "category": "write",
+      "description": "Set the current research project (by defName or label).",
+      "handler": "WriteCommands.SetResearch",
+      "sdk_method": "set_research",
+      "params": {
+        "project": { "type": "str", "required": true, "description": "Research project defName or label" }
+      },
+      "returns": {
+        "ok": "bool",
+        "project": "str (label)"
+      }
+    },
+    "set_plant": {
+      "category": "write",
+      "description": "Change the plant type grown in a growing zone.",
+      "handler": "WriteCommands.SetPlant",
+      "sdk_method": "set_plant",
+      "params": {
+        "zone": { "type": "str", "required": false, "default": "1", "description": "Zone label or partial match" },
+        "plant": { "type": "str", "required": false, "default": "Plant_Rice", "description": "Plant ThingDef defName" }
+      },
+      "returns": {
+        "ok": "bool",
+        "zone": "str (label)",
+        "plant": "str"
+      }
+    },
+    "delete_zone": {
+      "category": "write",
+      "description": "Delete a zone at a cell, or delete all grow zones if no position given.",
+      "handler": "WriteCommands.DeleteZone",
+      "sdk_method": "delete_zone",
+      "params": {
+        "x": { "type": "int", "required": false, "default": "-1", "description": "Cell x (omit to delete all grow zones)" },
+        "z": { "type": "int", "required": false, "default": "-1", "description": "Cell z" }
+      },
+      "returns": {
+        "ok": "bool",
+        "deleted": "str|int (zone label or count)"
+      }
+    },
+    "remove_zone_cells": {
+      "category": "write",
+      "description": "Remove cells from zones in a rectangular area or single cell. Zones that lose all cells are auto-deleted.",
+      "handler": "WriteCommands.RemoveZoneCells",
+      "sdk_method": "remove_zone_cells",
+      "params": {
+        "x1": { "type": "int", "required": true, "description": "Left bound (or single cell X)" },
+        "z1": { "type": "int", "required": true, "description": "Top bound (or single cell Z)" },
+        "x2": { "type": "int", "required": false, "default": "x1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1", "description": "Bottom bound" }
+      },
+      "returns": {
+        "ok": "bool",
+        "removed": "int (cells removed)",
+        "deleted": "int (zones fully deleted)"
+      }
+    },
+    "camera_jump": {
+      "category": "write",
+      "description": "Jump the camera to a map position.",
+      "handler": "WriteCommands.CameraJump",
+      "sdk_method": "camera",
+      "params": {
+        "x": { "type": "int", "required": false, "default": "125", "description": "Target x" },
+        "z": { "type": "int", "required": false, "default": "125", "description": "Target z" }
+      },
+      "returns": {
+        "ok": "bool",
+        "x": "int",
+        "z": "int"
+      }
+    },
+    "place": {
+      "category": "write",
+      "description": "Instantly spawn a thing (building/item) at a position, owned by the player. Bypasses normal construction.",
+      "handler": "WriteCommands.Place",
+      "sdk_method": "place",
+      "params": {
+        "thingDef": { "type": "str", "required": true, "description": "ThingDef defName" },
+        "x": { "type": "int", "required": true, "description": "X coordinate" },
+        "z": { "type": "int", "required": true, "description": "Z coordinate (also accepts 'y')" },
+        "rotation": { "type": "int", "required": false, "default": "0", "description": "Rot4 value" },
+        "stuffDef": { "type": "str", "required": false, "default": null, "description": "Stuff material defName" }
+      },
+      "returns": {
+        "ok": "bool",
+        "thingDef": "str",
+        "x": "int",
+        "z": "int"
+      }
+    },
+    "open_letter": {
+      "category": "write",
+      "description": "Open a letter by index, triggering its dialog if applicable.",
+      "handler": "WriteCommands.OpenLetter",
+      "sdk_method": "open_letter",
+      "params": {
+        "index": { "type": "int", "required": true, "description": "Letter index from read_letters" }
+      },
+      "returns": {
+        "label": "str",
+        "type": "str",
+        "text": "str",
+        "dialog_opened": "bool",
+        "dialog_title": "str",
+        "options": "[{text, disabled?, disabledReason?}]"
+      }
+    },
+    "dismiss_letter": {
+      "category": "write",
+      "description": "Dismiss (remove) a letter by index.",
+      "handler": "WriteCommands.DismissLetter",
+      "sdk_method": "dismiss_letter",
+      "params": {
+        "index": { "type": "int", "required": true, "description": "Letter index from read_letters" }
+      },
+      "returns": {
+        "ok": "bool",
+        "dismissed": "str (label)"
+      }
+    },
+    "choose_option": {
+      "category": "write",
+      "description": "Choose an option in the topmost Dialog_NodeTree by index. May navigate to a new node or execute an action.",
+      "handler": "WriteCommands.ChooseOption",
+      "sdk_method": "choose_option",
+      "params": {
+        "index": { "type": "int", "required": true, "description": "Option index (0-based)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "selected": "str (option text)",
+        "result": "str ('navigated' | 'action executed')",
+        "new_text": "str (if navigated)",
+        "new_options": "[...] (if navigated)",
+        "dialog_closed": "bool (if action)"
+      }
+    },
+    "close_dialog": {
+      "category": "write",
+      "description": "Close a dialog window. Can target specific type or close topmost. Handles naming dialogs with factionName/settlementName params.",
+      "handler": "WriteCommands.CloseDialog",
+      "sdk_method": "close_dialog",
+      "params": {
+        "type": { "type": "str", "required": false, "default": null, "description": "Window type name to close (e.g. 'Dialog_NamePlayerFactionAndSettlement')" },
+        "factionName": { "type": "str", "required": false, "default": "Colony", "description": "Faction name (for naming dialogs)" },
+        "settlementName": { "type": "str", "required": false, "default": "Settlement", "description": "Settlement name (for naming dialogs)" }
+      },
+      "returns": {
+        "ok": "bool",
+        "closed": "str (window type name)",
+        "factionName": "str (if naming dialog)",
+        "settlementName": "str (if naming dialog)"
+      }
+    },
+    "set_manual_priorities": {
+      "category": "write",
+      "description": "Toggle manual (1-4) vs simple (on/off) work priority mode.",
+      "handler": "WriteCommands.SetManualPriorities",
+      "sdk_method": "set_manual_priorities",
+      "params": {
+        "enabled": { "type": "bool", "required": false, "default": "true", "description": "true = manual priorities (1-4), false = simple toggle" }
+      },
+      "returns": {
+        "ok": "bool",
+        "manualPriorities": "bool"
+      }
+    },
+    "set_stockpile_filter": {
+      "category": "write",
+      "description": "Modify a stockpile's storage filter: allow/disallow ThingDefs, categories, or special filters. Supports bulk allow_all/disallow_all.",
+      "handler": "WriteCommands.SetStockpileFilter",
+      "sdk_method": "set_stockpile_filter",
+      "params": {
+        "zone": { "type": "str", "required": false, "default": null, "description": "Stockpile zone label (fuzzy match)" },
+        "x": { "type": "int", "required": false, "default": null, "description": "Cell x to find stockpile (alternative to zone)" },
+        "z": { "type": "int", "required": false, "default": null, "description": "Cell z to find stockpile" },
+        "allow": { "type": "list", "required": false, "default": null, "description": "List of ThingDef/ThingCategoryDef/SpecialThingFilterDef names to allow" },
+        "disallow": { "type": "list", "required": false, "default": null, "description": "List of names to disallow" },
+        "allow_all": { "type": "bool", "required": false, "default": "false", "description": "Allow all items first (then apply disallow)" },
+        "disallow_all": { "type": "bool", "required": false, "default": "false", "description": "Disallow all items first (then apply allow)" },
+        "priority": { "type": "str", "required": false, "default": null, "description": "StoragePriority enum value" }
+      },
+      "returns": {
+        "ok": "bool",
+        "zone": "str (label)",
+        "priority": "str",
+        "allowed": "int",
+        "disallowed": "int"
+      }
+    },
+    "add_plan": {
+      "category": "write",
+      "description": "Place planning designations over a rectangle (visual markers, no gameplay effect).",
+      "handler": "WriteCommands.AddPlan",
+      "sdk_method": "plan",
+      "params": {
+        "x1": { "type": "int", "required": true, "description": "Left bound" },
+        "z1": { "type": "int", "required": true, "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1", "description": "Bottom bound" }
+      },
+      "returns": {
+        "ok": "bool",
+        "planned": "int"
+      }
+    },
+    "remove_plan": {
+      "category": "write",
+      "description": "Remove planning designations from a rectangle.",
+      "handler": "WriteCommands.RemovePlan",
+      "sdk_method": "remove_plan",
+      "params": {
+        "x1": { "type": "int", "required": true, "description": "Left bound" },
+        "z1": { "type": "int", "required": true, "description": "Top bound" },
+        "x2": { "type": "int", "required": false, "default": "x1", "description": "Right bound" },
+        "z2": { "type": "int", "required": false, "default": "z1", "description": "Bottom bound" }
+      },
+      "returns": {
+        "ok": "bool",
+        "removed": "int"
+      }
+    },
+    "assign_role": {
+      "category": "write",
+      "description": "Assign an ideology role to a pawn. Unassigns current holder if at max count. Requires Ideology DLC.",
+      "handler": "ReadCommands.AssignRole",
+      "sdk_method": "assign_role",
+      "params": {
+        "pawn": { "type": "str", "required": true, "description": "Pawn name" },
+        "role": { "type": "str", "required": true, "description": "Precept_Role defName (e.g. 'IdeoRole_Moralist')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "pawn": "str",
+        "role": "str (label)"
+      }
+    },
+    "dev_set_storyteller": {
+      "category": "dev",
+      "description": "Change the storyteller and/or difficulty setting.",
+      "handler": "WriteCommands.DevSetStoryteller",
+      "sdk_method": "set_storyteller",
+      "params": {
+        "name": { "type": "str", "required": false, "default": null, "description": "Storyteller name: 'Cassandra', 'Phoebe', or 'Randy'" },
+        "difficulty": { "type": "str", "required": false, "default": null, "description": "Difficulty name: 'Peaceful', 'Community', 'Adventure', 'Strive', 'Blood'" }
+      },
+      "returns": {
+        "ok": "bool",
+        "storyteller": "str (defName)",
+        "difficulty": "str (defName)"
+      }
+    },
+    "dev_toggle_incidents": {
+      "category": "dev",
+      "description": "Toggle random storyteller incidents (raids, events, weather) on or off.",
+      "handler": "WriteCommands.DevToggleIncidents",
+      "sdk_method": "disable_incidents / enable_incidents",
+      "params": {
+        "enable": { "type": "bool", "required": false, "default": "toggle", "description": "true = disable incidents, false = enable incidents (inverted naming -- 'enable' means 'enable the blocker')" }
+      },
+      "returns": {
+        "ok": "bool",
+        "incidents_disabled": "bool"
+      }
+    },
+    "spawn_animals": {
+      "category": "dev",
+      "description": "Spawn wild animals on the map at runtime. Optional position and manhunter mode.",
+      "handler": "WriteCommands.SpawnAnimals",
+      "sdk_method": "spawn_animals",
+      "params": {
+        "species": { "type": "str", "required": true, "description": "PawnKindDef or race defName (e.g. 'Boar', 'Deer')" },
+        "count": { "type": "int", "required": false, "default": "1", "description": "Number to spawn" },
+        "x": { "type": "int", "required": false, "default": null, "description": "Spawn x (random edge if omitted)" },
+        "z": { "type": "int", "required": false, "default": null, "description": "Spawn z (random edge if omitted)" },
+        "manhunter": { "type": "bool", "required": false, "default": "false", "description": "If true, spawned animals are manhunter" }
+      },
+      "returns": {
+        "ok": "bool",
+        "spawned": "int",
+        "species": "str",
+        "details": "[{species, x, z, manhunter}]"
+      }
+    }
+  }
+}
