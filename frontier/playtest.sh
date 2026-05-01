@@ -33,6 +33,7 @@ log "━━━━━━━━━━━━━━━━━━━━━━━━━
 declare -a RESULTS=()
 PASSED=0
 FAILED=0
+REVIEW=0
 ERRORED=0
 
 for SCENARIO_JSON in "$@"; do
@@ -84,6 +85,7 @@ for SCENARIO_JSON in "$@"; do
     case "$STATUS" in
         PASS) PASSED=$((PASSED + 1)) ;;
         FAIL) FAILED=$((FAILED + 1)) ;;
+        REVIEW) REVIEW=$((REVIEW + 1)) ;;
         *)    : ;;
     esac
 
@@ -96,7 +98,7 @@ BATCH_DURATION=$(($(date +%s) - BATCH_START))
 log ""
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 log "BATCH COMPLETE ($BATCH_ID)"
-log "  Pass: $PASSED  Fail: $FAILED  Error: $ERRORED"
+log "  Pass: $PASSED  Fail: $FAILED  Review: $REVIEW  Error: $ERRORED"
 log "  Wall time: ${BATCH_DURATION}s"
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 log ""
@@ -112,6 +114,6 @@ log ""
 log "Reports: $FRONTIER_DIR/frontier/results/<scenario>/run_NNN/playtest_report.md"
 
 # Exit non-zero if any scenario failed
-if [[ $FAILED -gt 0 || $ERRORED -gt 0 ]]; then
+if [[ $FAILED -gt 0 || $REVIEW -gt 0 || $ERRORED -gt 0 ]]; then
     exit 1
 fi

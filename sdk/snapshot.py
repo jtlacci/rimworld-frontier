@@ -70,16 +70,22 @@ def take_snapshot(r):
         mi = snapshot["map_info"]
         w = mi.get("size", mi).get("x", 250) if isinstance(mi.get("size", mi), dict) else 250
         h = mi.get("size", mi).get("z", 250) if isinstance(mi.get("size", mi), dict) else 250
-        blueprints = r.scan_items(0, 0, w, h, kind="blueprint,frame")
+        all_things = r.scan(0, 0, w - 1, h - 1)
+        snapshot["things"] = all_things.get("things", []) if isinstance(all_things, dict) else []
+        blueprints = [
+            t for t in snapshot["things"]
+            if isinstance(t, dict) and t.get("kind") in ("blueprint", "frame")
+        ]
         snapshot["blueprint_count"] = len(blueprints) if isinstance(blueprints, list) else 0
     except Exception:
+        snapshot["things"] = []
         snapshot["blueprint_count"] = 0
 
     # Scan for survival packs anywhere on map (resourceCounter misses ground items)
     try:
-        packs = r.scan_items(0, 0, w, h, kind="item")
+        things = snapshot.get("things") or r.scan_items(0, 0, w - 1, h - 1, kind="item")
         pack_count = sum(
-            item.get("stackCount", 1) for item in (packs if isinstance(packs, list) else [])
+            item.get("stackCount", item.get("count", 1)) for item in (things if isinstance(things, list) else [])
             if item.get("def") == "MealSurvivalPack"
         )
         snapshot["survival_packs_on_map"] = pack_count

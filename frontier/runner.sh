@@ -48,6 +48,34 @@ log() {
     echo "[runner] $*" >> "$LIVE_LOG" 2>/dev/null
 }
 
+player_log_path() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "$HOME/Library/Logs/Ludeon Studios/RimWorld/Player.log"
+    elif [[ "$OSTYPE" == "linux"* ]]; then
+        echo "$HOME/.config/unity3d/Ludeon Studios/RimWorld by Ludeon Studios/Player.log"
+    else
+        echo "${LOCALAPPDATA:-$HOME/AppData/Local}/../LocalLow/Ludeon Studios/RimWorld by Ludeon Studios/Player.log"
+    fi
+}
+
+terminate_pid_tree() {
+    local pid="$1"
+    local signal="${2:-TERM}"
+    local child
+
+    for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+        terminate_pid_tree "$child" "$signal"
+    done
+    kill "-$signal" "$pid" 2>/dev/null || true
+}
+
+capture_player_log_slice() {
+    local dest="$RESULT_DIR/player_run.log"
+    if [[ -n "${PLAYER_LOG:-}" && -f "$PLAYER_LOG" ]]; then
+        tail -n +"$((PLAYER_LOG_START_LINE + 1))" "$PLAYER_LOG" > "$dest" 2>/dev/null || true
+    fi
+}
+
 phase_mark() {
     echo "{\"phase\":\"$1\",\"event\":\"$2\",\"ts\":$(date +%s)}" >> "$RESULT_DIR/phases.jsonl"
 }
@@ -81,6 +109,11 @@ kill_and_restart_game() {
 }
 
 log "========== PLAYTEST: $SCENARIO_NAME (run $RUN_ID) =========="
+PLAYER_LOG="$(player_log_path)"
+PLAYER_LOG_START_LINE=0
+if [[ -f "$PLAYER_LOG" ]]; then
+    PLAYER_LOG_START_LINE=$(wc -l < "$PLAYER_LOG" | tr -d ' ')
+fi
 
 # ─── Phase 0: Generate save file ───
 log "Generating save for scenario: $SCENARIO_NAME..."
@@ -208,7 +241,7 @@ START_TS=$(date +%s)
 # ─── Phase 2b: Telemetry smoke test + start score monitor ───
 phase_mark "smoke_test" "start"
 log "Running telemetry smoke test..."
-python3 << 'PYEOF'
+python3 << PYEOF
 import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 r = RimClient()
@@ -334,9 +367,8 @@ except: print(0)
 " 2>/dev/null || echo 0)
         if [[ "$GAME_DAY" -ge "$GAME_DAY_LIMIT" ]]; then
             log "Game day $GAME_DAY >= limit $GAME_DAY_LIMIT — stopping overseer"
-            kill "$OVERSEER_PID" 2>/dev/null; sleep 2
-            kill -9 "$OVERSEER_PID" 2>/dev/null || true
-            pkill -f "agent_harness" 2>/dev/null || true
+            terminate_pid_tree "$OVERSEER_PID" TERM; sleep 2
+            terminate_pid_tree "$OVERSEER_PID" KILL
             OVERSEER_EXIT=124
             python3 -c "
 import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
@@ -349,9 +381,8 @@ r = RimClient(); r.pause(); r.save(name='$SAVE_NAME'); r.close()
 
     if [[ $ELAPSED -ge $OVERSEER_TIMEOUT ]]; then
         log "WARNING: Overseer hit ${OVERSEER_TIMEOUT}s timeout — killing"
-        kill "$OVERSEER_PID" 2>/dev/null; sleep 2
-        kill -9 "$OVERSEER_PID" 2>/dev/null || true
-        pkill -f "agent_harness" 2>/dev/null || true
+        terminate_pid_tree "$OVERSEER_PID" TERM; sleep 2
+        terminate_pid_tree "$OVERSEER_PID" KILL
         OVERSEER_EXIT=124
         python3 -c "
 import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
@@ -881,6 +912,7 @@ python3 "$FRONTIER_DIR/frontier/timeline_charts.py" "$RESULT_DIR" 2>/dev/null ||
 phase_mark "charts" "end"
 
 # ─── Phase 5: Evaluate pass criteria ───
+capture_player_log_slice
 phase_mark "criteria" "start"
 log "Evaluating pass_criteria..."
 
@@ -900,7 +932,7 @@ report = write_report(result_dir, criteria)
 s = report["summary"]
 print(f"Playtest: {report['overall'].upper()} — {s['pass']}/{s['total']} pass, {s['fail']} fail, {s['deferred']} deferred")
 for c in report["criteria"]:
-    marker = {"pass": "[PASS]", "fail": "[FAIL]", "deferred": "[?]", "error": "[ERR]"}.get(c["status"], "[?]")
+    marker = {"pass": "[PASS]", "fail": "[FAIL]", "deferred": "[REVIEW]", "error": "[ERR]"}.get(c["status"], "[?]")
     print(f"  {marker} {c['name']}: {c['detail']}")
 PYEOF
 phase_mark "criteria" "end"

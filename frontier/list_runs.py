@@ -48,6 +48,7 @@ def status_marker(status: str) -> str:
     return {
         "pass": "PASS",
         "fail": "FAIL",
+        "review": "REVIEW",
         "no_criteria": "—",
     }.get(status, status.upper())
 
