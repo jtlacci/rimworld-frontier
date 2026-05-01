@@ -14,19 +14,8 @@ WATER_DIFFICULTY = {"none": 0, "corners": 0.2, "river": 0.4, "lake": 0.6, "borde
 
 
 def _agent_repo() -> Path:
-    """Resolve the agent repo path from AGENT_REPO env var or default sibling."""
-    env = os.environ.get("AGENT_REPO")
-    if env:
-        return Path(env)
-    # Default: sibling directory of this repo
-    frontier_root = Path(__file__).parent.parent
-    candidate = frontier_root.parent / "rimworld-tcp"
-    if candidate.exists():
-        return candidate
-    raise FileNotFoundError(
-        "AGENT_REPO not set and ../rimworld-tcp not found. "
-        "Set AGENT_REPO env var to point to the agent repo."
-    )
+    """Repo root — sdk/ and tools/ now live alongside frontier/."""
+    return Path(__file__).parent.parent
 
 
 @dataclass

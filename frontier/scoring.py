@@ -11,19 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Ensure agent repo's sdk/ is importable
-import os
-_agent_repo = os.environ.get("AGENT_REPO")
-if _agent_repo:
-    sys.path.insert(0, os.path.join(_agent_repo, "sdk"))
-else:
-    # Fallback: try sibling directory
-    _frontier_root = Path(__file__).parent.parent
-    for _candidate in [_frontier_root.parent / "rimworld-tcp" / "sdk",
-                       _frontier_root.parent / "rimworld-agent" / "sdk"]:
-        if _candidate.exists():
-            sys.path.insert(0, str(_candidate))
-            break
+# sdk/ lives at the repo root alongside frontier/
+sys.path.insert(0, str(Path(__file__).parent.parent / "sdk"))
 
 from snapshot import score_snapshot as _base_score_snapshot
 from timeline_scoring import score_timeline

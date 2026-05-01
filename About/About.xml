@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>CarolineConsole</name>
+  <author>Caroline AI</author>
+  <packageId>caroline.console</packageId>
+  <supportedVersions>
+    <li>1.4</li>
+    <li>1.5</li>
+  </supportedVersions>
+  <description>TCP bridge for external AI control of RimWorld. Exposes a JSON command interface on port 9900 for reading game state and issuing commands.</description>
+</ModMetaData>

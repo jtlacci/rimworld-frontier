@@ -1,0 +1,4 @@
+[tool.pyright]
+include = ["sdk"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"

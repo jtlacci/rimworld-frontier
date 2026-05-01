@@ -21,15 +21,11 @@ RESET = '\033[0m'
 
 current_agent = None
 
-# Strip both possible repo paths for cleaner output
 FRONTIER_DIR = os.environ.get('FRONTIER_DIR', '')
-AGENT_REPO = os.environ.get('AGENT_REPO', '')
 
 def shorten(path):
     if FRONTIER_DIR:
         path = path.replace(FRONTIER_DIR + '/', '')
-    if AGENT_REPO:
-        path = path.replace(AGENT_REPO + '/', 'agent/')
     return path
 
 def agent_color():

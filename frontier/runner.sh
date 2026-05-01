@@ -7,14 +7,14 @@
 #
 # Results saved to frontier/results/<scenario_name>/run_<id>/
 #
-# Requires: AGENT_REPO env var (or source config.sh first)
+# Requires: source config.sh first (sets FRONTIER_DIR)
 
 set -euo pipefail
 
 SCENARIO_JSON="${1:?Usage: runner.sh <scenario_config.json> [run_id]}"
 RUN_ID="${2:-1}"
 
-# Source config to get FRONTIER_DIR and AGENT_REPO
+# Source config to get FRONTIER_DIR
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../config.sh"
 source "$FRONTIER_DIR/frontier/log_event.sh" 2>/dev/null || true
@@ -59,7 +59,7 @@ ensure_game_running() {
         for i in $(seq 1 60); do
             sleep 5
             if python3 -c "
-import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 r = RimClient(); r.close()
 " 2>/dev/null; then
@@ -85,7 +85,7 @@ log "========== PLAYTEST: $SCENARIO_NAME (run $RUN_ID) =========="
 # ─── Phase 0: Generate save file ───
 log "Generating save for scenario: $SCENARIO_NAME..."
 phase_mark "savegen" "start"
-AGENT_REPO="$AGENT_REPO" python3 << PYEOF
+python3 << PYEOF
 import sys, json, os
 sys.path.insert(0, '$FRONTIER_DIR')
 from frontier.scenario import ScenarioConfig
@@ -104,7 +104,7 @@ log "Loading save: $SAVE_NAME..."
 LOAD_OK=0
 for LOAD_ATTEMPT in 1 2 3; do
     if python3 << PYEOF
-import sys, time; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys, time; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 r = RimClient()
 r.load_game("$SAVE_NAME")
@@ -137,7 +137,7 @@ log "Save loaded, incidents disabled, items unforbidden"
 
 # Spawn scenario wildlife via SDK (not baked into save — GenSpawn blocker would kill them)
 python3 << PYEOF
-import sys, json; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys, json; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 config = json.load(open('$SCENARIO_JSON'))
 dist = config.get('wildlife_distribution') or {}
@@ -165,7 +165,7 @@ phase_mark "load_save" "end"
 # ─── Phase 2: Before snapshot ───
 phase_mark "before_snapshot" "start"
 python3 << PYEOF - "$RESULT_DIR" "$MAP_SIZE"
-import sys, json, time; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys, json, time; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 from snapshot import take_snapshot
 time.sleep(3)
@@ -201,7 +201,7 @@ PYEOF
 phase_mark "before_snapshot" "end"
 
 # Clear stale token log (in agent repo)
-rm -f "$AGENT_REPO/surveys/token_log.jsonl"
+rm -f "$FRONTIER_DIR/surveys/token_log.jsonl"
 
 START_TS=$(date +%s)
 
@@ -209,7 +209,7 @@ START_TS=$(date +%s)
 phase_mark "smoke_test" "start"
 log "Running telemetry smoke test..."
 python3 << 'PYEOF'
-import sys, os; sys.path.insert(0, os.path.join(os.environ.get("AGENT_REPO", ""), "sdk"))
+import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 r = RimClient()
 ok = True
@@ -241,7 +241,7 @@ PYEOF
 log "Starting score monitor (20s intervals)..."
 # P0 fix: truncate stale timeline data to prevent merging with previous captures
 > "$RESULT_DIR/score_timeline.jsonl"
-AGENT_REPO="$AGENT_REPO" python3 "$FRONTIER_DIR/agents/score_monitor.py" "$RESULT_DIR" 5 &
+python3 "$FRONTIER_DIR/agents/score_monitor.py" "$RESULT_DIR" 5 &
 MONITOR_PID=$!
 phase_mark "smoke_test" "end"
 
@@ -271,7 +271,10 @@ fi
 phase_mark "overseer" "start"
 log "Spawning overseer (${OVERSEER_TIMEOUT}s limit, map=${MAP_SIZE}x${MAP_SIZE})..."
 
-OVERSEER_PROMPT="$(cat "$AGENT_REPO/AGENT_OVERSEER.md")"
+# Snapshot the overseer prompt into the run dir so working-tree edits during a run
+# can't change the agent's behavior mid-flight, and the artifact is reproducible.
+cp "$FRONTIER_DIR/AGENT_OVERSEER.md" "$RESULT_DIR/AGENT_OVERSEER.md"
+OVERSEER_PROMPT="$(cat "$RESULT_DIR/AGENT_OVERSEER.md")"
 
 SYSTEM_PROMPT="$OVERSEER_PROMPT
 
@@ -281,14 +284,14 @@ SYSTEM_PROMPT="$OVERSEER_PROMPT
 
 Map: ${MAP_SIZE}x${MAP_SIZE}. Game is loaded, paused, incidents disabled, items unforbidden.
 Save name: $SAVE_NAME
-SDK_PATH: $AGENT_REPO/sdk
+SDK_PATH: $FRONTIER_DIR/sdk
 
 ${MISSION_PROMPT:+## MISSION INSTRUCTIONS
 
 $MISSION_PROMPT}"
 
 export RIM_SDK_LOG="$RESULT_DIR/command_log.jsonl"
-export SDK_PATH="$AGENT_REPO/sdk"
+export SDK_PATH="$FRONTIER_DIR/sdk"
 
 unset CLAUDECODE
 TMPFILE=$(mktemp)
@@ -320,7 +323,7 @@ while kill -0 "$OVERSEER_PID" 2>/dev/null; do
     # Check game day every 30s
     if [[ $((ELAPSED % 30)) -eq 0 ]]; then
         GAME_DAY=$(python3 -c "
-import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 try:
     r = RimClient()
@@ -336,7 +339,7 @@ except: print(0)
             pkill -f "agent_harness" 2>/dev/null || true
             OVERSEER_EXIT=124
             python3 -c "
-import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 r = RimClient(); r.pause(); r.save(name='$SAVE_NAME'); r.close()
 " 2>/dev/null || true
@@ -351,7 +354,7 @@ r = RimClient(); r.pause(); r.save(name='$SAVE_NAME'); r.close()
         pkill -f "agent_harness" 2>/dev/null || true
         OVERSEER_EXIT=124
         python3 -c "
-import sys; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 r = RimClient(); r.pause(); r.save(name='$SAVE_NAME'); r.close()
 " 2>/dev/null || true
@@ -519,7 +522,7 @@ phase_mark "scoring" "start"
 log "Taking after snapshot and scoring..."
 
 python3 << PYEOF - "$RESULT_DIR" "$DURATION" "$SCENARIO_JSON"
-import sys, json, os; sys.path.insert(0, '$AGENT_REPO/sdk'); sys.path.insert(0, '$FRONTIER_DIR')
+import sys, json, os; sys.path.insert(0, '$FRONTIER_DIR/sdk'); sys.path.insert(0, '$FRONTIER_DIR')
 from rimworld import RimClient
 from snapshot import take_snapshot, compare_snapshots
 
@@ -819,7 +822,7 @@ else:
             print("  No timeline issues detected")
 
         # Score timeline metrics
-        sys.path.insert(0, '$AGENT_REPO/sdk')
+        sys.path.insert(0, '$FRONTIER_DIR/sdk')
         from timeline_scoring import score_timeline as _tl_score
         tl_scores, tl_weights = _tl_score(entries)
         if tl_scores:
@@ -906,7 +909,7 @@ phase_mark "criteria" "end"
 phase_mark "colony_map" "start"
 log "Capturing colony map..."
 python3 << PYEOF - "$RESULT_DIR" "$MAP_SIZE"
-import sys, json; sys.path.insert(0, '$AGENT_REPO/sdk')
+import sys, json; sys.path.insert(0, '$FRONTIER_DIR/sdk')
 from rimworld import RimClient
 
 result_dir = sys.argv[1]
