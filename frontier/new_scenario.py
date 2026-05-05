@@ -91,7 +91,7 @@ def main() -> int:
     print()
     print("Next steps:")
     print(f"  1. Edit  {out.relative_to(repo_root)}  (set mission_description, pass_criteria, observe)")
-    print(f"  2. Run   ./frontier/run_scenario.sh {args.name}")
+    print(f"  2. Ask Claude Code: \"run a playtest on {args.name}\"")
     print(f"  3. Read  frontier/results/{args.name}/run_001/playtest_report.md")
     return 0
 
