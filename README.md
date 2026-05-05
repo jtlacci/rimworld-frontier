@@ -23,7 +23,7 @@ The agent is fixed: it's the same gameplay-driving agent across all your scenari
 - macOS, Linux, or Windows + RimWorld installed
 - Python 3.11+
 - .NET SDK (to build the Harmony mod under `Source/`)
-- A DashScope API key for the Qwen-based overseer/reporter agents
+- Claude Code (the harness drives playtests via a Claude subagent — no external LLM API)
 
 ---
 
@@ -34,23 +34,13 @@ The agent is fixed: it's the same gameplay-driving agent across all your scenari
 git clone <this-repo> rimworld-frontier
 cd rimworld-frontier
 
-# 2. Install Python deps
-pip install openai anthropic
-
-# 3. Build and install the Harmony mod
+# 2. Build and install the Harmony mod
 cd Source && dotnet build -c Release && cd ..
 # Copy Source/bin/Release/CarolineConsole.dll into your RimWorld Mods/CarolineConsole/Assemblies/
 # (see CLAUDE.md for the platform-specific paths)
-
-# 4. Set your API key
-export DASHSCOPE_API_KEY=sk-...
 ```
 
-Verify by running the bundled example:
-
-```bash
-./frontier/run_scenario.sh example_mod_test
-```
+Verify by asking Claude Code in this directory: **"run a playtest on `example_mod_test`"**.
 
 ---
 
@@ -67,13 +57,11 @@ Creates `frontier/scenarios/my_workbench_test.json` with sensible defaults. Edit
 
 ### 2. Run it
 
-```bash
-./frontier/run_scenario.sh my_workbench_test
-# or, run a batch:
-./frontier/playtest.sh frontier/scenarios/*.json
-```
+Ask Claude Code: **"run a playtest on `my_workbench_test`"** (or a list of scenarios for a loop).
 
-Each run produces artifacts at `frontier/results/<scenario>/run_NNN/`. The console prints a one-line pass/fail summary.
+Claude Code orchestrates the phases: it runs `./frontier/runner_setup.sh`, spawns a subagent as the **overseer** (which drives RimWorld via the SDK), then runs `./frontier/runner_finish.sh` and writes `playtest_report.md` itself.
+
+Each run produces artifacts at `frontier/results/<scenario>/run_NNN/`.
 
 ### 3. Review the report
 
@@ -176,12 +164,6 @@ The agent-written report (`playtest_report.md`) is the primary artifact. It's st
 # Scaffold a new scenario:
 python3 frontier/new_scenario.py <name> [--mod-id ...] [--mod-name ...]
 
-# Run a single scenario:
-./frontier/run_scenario.sh <name> [run_id]
-
-# Run a batch and get a pass/fail table:
-./frontier/playtest.sh frontier/scenarios/*.json
-
 # List all runs (latest per scenario):
 python3 frontier/list_runs.py
 
@@ -189,11 +171,13 @@ python3 frontier/list_runs.py
 python3 frontier/list_runs.py <name>
 ```
 
+To run scenarios, ask Claude Code from a session in this directory.
+
 ---
 
 ## How it works (one paragraph)
 
-`runner.sh` orchestrates phases for one scenario: it generates a save (via `tools/savegen.py`), loads it into a running RimWorld instance, snapshots colony state, kicks off a 5-second-interval telemetry monitor, spawns the **overseer agent** (driven by `AGENT_OVERSEER.md` plus your `mission_description`) to play the game for up to ~22 minutes wall-clock or 5 in-game days, snapshots final state, evaluates `pass_criteria` deterministically, then spawns the **reporter agent** to write `playtest_report.md` from the artifacts. `playtest.sh` just runs `runner.sh` per scenario in a list and prints a summary table.
+`runner_setup.sh` does the deterministic setup for one scenario: it generates a save (via `tools/savegen.py`), loads it into a running RimWorld instance, snapshots colony state, and kicks off a 5-second-interval telemetry monitor. It then prints a JSON line with paths Claude Code uses to spawn an **overseer subagent** — fed `AGENT_OVERSEER.md` plus your `mission_description` — that plays the game for up to ~22 minutes wall-clock or 5 in-game days. When the subagent finishes, `runner_finish.sh` snapshots the final state, scores the run, evaluates `pass_criteria` deterministically, captures the colony map, and Claude Code itself writes `playtest_report.md` using `AGENT_REPORTER.md` as a guide.
 
 For more architectural detail, see `CLAUDE.md`.
 
@@ -201,10 +185,10 @@ For more architectural detail, see `CLAUDE.md`.
 
 ## Troubleshooting
 
-- **"DASHSCOPE_API_KEY not set"** — required for the Qwen-based agents. Get one from Alibaba Cloud DashScope.
-- **Agent runs but does nothing useful** — check `overseer_conversation.txt` for the agent's reasoning. It may have hit an SDK error early.
+- **Overseer subagent runs but does nothing useful** — check `command_log.jsonl` for the SDK calls it actually made. It may have hit an SDK error early.
 - **Scenario fails with "TODO" in mission_description** — you forgot to fill in the scaffold. Edit the JSON.
 - **`thing_exists` always fails** — the def name in your scenario must match the def the mod actually registers (case-sensitive). Check `command_log.jsonl` for the agent's attempted operations.
+- **RimWorld won't connect over TCP** — make sure the Caroline Console mod is enabled in RimWorld's mods list and the game is on the main menu or in a save.
 
 ---
 
@@ -212,9 +196,9 @@ For more architectural detail, see `CLAUDE.md`.
 
 ```
 frontier/
-  runner.sh             single-scenario runner
-  run_scenario.sh       run by name
-  playtest.sh           batch runner with pass/fail table
+  runner_setup.sh       phases 0-2b (savegen → snapshot → start monitor)
+  runner_finish.sh      phases 4-6 (snapshot → score → criteria → map)
+  _analyze_timeline.py  timeline diagnostics
   new_scenario.py       scaffold a new scenario
   list_runs.py          review run history
   criteria.py           pass/fail evaluator
@@ -224,8 +208,8 @@ frontier/
   results/              per-run artifacts (gitignored)
 
 agents/
-  run_reporter.sh       reporter agent invocation
   score_monitor.py      background telemetry monitor
+  listen.sh             live log viewer for active runs
 
 sdk/                    Python SDK — RimClient, snapshot, scoring
 tools/                  savegen.py (custom .rws builder), read_state.py
@@ -235,9 +219,9 @@ wiki/                   RimWorld game knowledge (QMD-indexed)
 Source/                 C# Harmony mod (build with dotnet)
 About/                  RimWorld mod metadata
 
-AGENT_OVERSEER.md       overseer agent prompt (the one driving gameplay)
-AGENT_REPORTER.md       reporter agent prompt
+AGENT_OVERSEER.md       overseer subagent prompt (drives gameplay)
+AGENT_REPORTER.md       guide for writing playtest_report.md
 REFERENCE_*.md          SDK/wiki/RimWorld reference docs
-config.sh               environment paths + model assignments
-CLAUDE.md               architecture summary for Claude Code agents
+config.sh               sets FRONTIER_DIR
+CLAUDE.md               orchestration notes for Claude Code
 ```

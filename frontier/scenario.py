@@ -130,7 +130,7 @@ class ScenarioConfig:
             berry_bushes=self.berry_bushes,
             keep_wildlife=self.keep_wildlife,
             starting_packs=self.starting_packs,
-            wildlife_count=0,                    # wildlife spawned by runner.sh via SDK (GenSpawn blocker)
+            wildlife_count=0,                    # wildlife spawned by runner_setup.sh via SDK (GenSpawn blocker)
             starting_items=self.starting_items,
             completed_research=self.completed_research,
             wildlife_species=None,

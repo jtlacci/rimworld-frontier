@@ -10,8 +10,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <RimWorldPath>/Users/john/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorldMac.app/Contents/Resources/Data</RimWorldPath>
-    <HarmonyPath>/Users/john/Library/Application Support/Steam/steamapps/workshop/content/294100/2009463077/Current/Assemblies</HarmonyPath>
+    <RimWorldPath>$(HOME)/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorldMac.app/Contents/Resources/Data</RimWorldPath>
+    <HarmonyPath>$(HOME)/Library/Application Support/Steam/steamapps/workshop/content/294100/2009463077/Current/Assemblies</HarmonyPath>
   </PropertyGroup>
 
   <ItemGroup>

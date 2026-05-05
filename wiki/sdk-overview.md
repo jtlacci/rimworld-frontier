@@ -45,7 +45,7 @@ except RimError as e:
 Every SDK call can be logged to JSONL for post-run analysis:
 
 ```python
-# Via env var (set by runner.sh):
+# Via env var (set when the orchestrator spawns the overseer subagent):
 export RIM_SDK_LOG="/path/to/command_log.jsonl"
 
 # Via constructor:

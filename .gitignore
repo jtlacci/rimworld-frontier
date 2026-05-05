@@ -7,6 +7,9 @@ frontier/logs/.last_check
 token_usage.jsonl
 .context/
 
+# Local python3 shim (per-machine workaround for broken interpreter installs)
+.bin/
+
 # C# Harmony mod build artifacts
 Source/bin/
 Source/obj/

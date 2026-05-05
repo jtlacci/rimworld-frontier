@@ -1,10 +1,10 @@
 #!/bin/bash
-# Frontier configuration — sources paths and model assignments.
+# Frontier configuration — sets paths used by the playtest scripts.
 #
 # Usage: source "$(dirname "$0")/../config.sh"  (from agents/ or frontier/)
 #
 # Sets:
-#   FRONTIER_DIR  — root of this repo (the unified harness + agent + SDK)
+#   FRONTIER_DIR  — root of this repo
 
 # Resolve FRONTIER_DIR from wherever this file lives
 FRONTIER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,14 +15,22 @@ if [[ ! -d "$FRONTIER_DIR/sdk" ]]; then
     return 1 2>/dev/null || exit 1
 fi
 
-# Qwen API config
-export DASHSCOPE_BASE_URL="${DASHSCOPE_BASE_URL:-https://dashscope-us.aliyuncs.com/compatible-mode/v1}"
-# DASHSCOPE_API_KEY must be set in environment
+# Pick a Python with a working stdlib (some Homebrew 3.14 builds have a broken pyexpat).
+# Set PYTHON env var if you want to force a specific interpreter.
+if [[ -z "${PYTHON:-}" ]]; then
+    for candidate in python3 python3.13 python3.12 python3.11 /usr/bin/python3; do
+        if command -v "$candidate" >/dev/null 2>&1 && \
+           "$candidate" -c "from xml.etree import ElementTree as ET; ET.fromstring('<a/>')" >/dev/null 2>&1; then
+            PYTHON="$candidate"
+            break
+        fi
+    done
+    PYTHON="${PYTHON:-python3}"
+fi
+export PYTHON
 
-# Model assignments
-export MODEL_OVERSEER="${MODEL_OVERSEER:-qwen3.5-397b-a17b}"
-export MODEL_REPORTER="${MODEL_REPORTER:-qwen3.5-397b-a17b}"
-
-# Agent harness
-AGENT_HARNESS="$FRONTIER_DIR/frontier/agent_harness.py"
-export AGENT_HARNESS
+# Prepend the local .bin shim dir so plain `python3` invocations resolve to a
+# working interpreter (the prompts and skills hardcode `python3`).
+if [[ -x "$FRONTIER_DIR/.bin/python3" ]]; then
+    export PATH="$FRONTIER_DIR/.bin:$PATH"
+fi
